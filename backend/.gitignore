@@ -1,0 +1,31 @@
+# Environment Variables
+.env
+.env.local
+.env.development
+.env.production
+backend/.env
+
+
+# Firebase service account
+*service-account*.json
+firebase-adminsdk*.json
+
+# Dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Build
+dist/
+build/
