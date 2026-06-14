@@ -17,7 +17,7 @@ try {
       }),
     });
     
-    console.log('✅ Firebase Admin initialized with environment variables');
+    console.log('✅Firebase Admin initialized with environment variables');
   } 
   // Method 2: Using service account JSON file (Development)
   else if (process.env.FIREBASE_SERVICE_ACCOUNT_PATH) {

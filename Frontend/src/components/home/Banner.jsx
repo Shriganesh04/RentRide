@@ -1,103 +1,103 @@
 import React from 'react'
-import banner from '../../assets/banner.jpg'
 import { motion } from 'framer-motion'
-import { FadeLeft } from '../../utils/Animation'
-import { Send } from 'lucide-react'
+import { Send, Phone, Mail, MapPin } from 'lucide-react'
+import banner from '../../assets/banner.jpg'
 
 const Banner = () => {
   return (
-    <div id="contact" className='relative overflow-hidden bg-background-light dark:bg-background-dark'>
-      <div className='absolute inset-0'>
-        <img 
-          src={banner} 
-          alt="Banner" 
-          className='w-full h-full object-cover opacity-20 dark:opacity-30'
-        />
-        <div className='absolute inset-0 bg-linear-to-r from-primary/120 via-primary/ to-primary/40'></div>
+    <section id="contact" className="relative overflow-hidden">
+      {/* Background image — dimmed */}
+      <div className="absolute inset-0">
+        <img src={banner} alt="" className="w-full h-full object-cover opacity-10" />
+        <div className="absolute inset-0 bg-gray-950" style={{ opacity: 0.9 }} />
       </div>
 
-      <div className='relative min-h-175 lg:min-h-200 flex items-center justify-end px-4 lg:px-16 max-w-7xl mx-auto py-20'>
-        <motion.div
-          variants={FadeLeft(0.2)}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          className='w-full max-w-md'
-        >
-          <h2 className='text-4xl lg:text-5xl font-bold mb-2 text-white'>
-            Get In Touch
-          </h2>
-          <p className='text-gray-200 mb-6'>Connect with our team to book your ride</p>
+      <div className="relative max-w-7xl mx-auto px-6 lg:px-12 py-24">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-start">
 
-          <form className='bg-white dark:bg-background-dark-secondary backdrop-blur-xl border-2 border-primary/30 rounded-2xl p-8 space-y-4 shadow-2xl'>
-            <div className='grid grid-cols-2 gap-4'>
-              <div className='flex flex-col gap-2'>
-                <label className='font-semibold text-primary text-sm'>First Name</label>
-                <input
-                  className='p-3 rounded-lg bg-background-secondary dark:bg-background-dark border-2 border-border-light dark:border-border-dark text-text-primary dark:text-text-dark-primary placeholder-text-secondary focus:outline-none focus:border-primary transition-all'
-                  type="text"
-                  name="firstName"
-                  placeholder='First name'
-                  required
-                />
+          {/* Left — contact info */}
+          <motion.div
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5 }}
+          >
+            <p className="text-green-500 text-sm font-semibold tracking-widest uppercase mb-4">Contact us</p>
+            <h2 className="text-4xl md:text-5xl font-bold text-white leading-tight mb-6">
+              Let's get you
+              <br />on the road.
+            </h2>
+            <p className="text-gray-400 text-lg leading-relaxed mb-10 max-w-md">
+              Have a question about a booking, a specific vehicle, or pricing? Our team responds within the hour.
+            </p>
+
+            <div className="space-y-5">
+              {[
+                { icon: <Phone size={18} />, label: 'Call us', value: '+91 98765 43210' },
+                { icon: <Mail size={18} />, label: 'Email', value: 'hello@rentride.in' },
+                { icon: <MapPin size={18} />, label: 'Head office', value: 'Mumbai, Maharashtra' },
+              ].map(({ icon, label, value }) => (
+                <div key={label} className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-green-500/10 flex items-center justify-center text-green-500 flex-shrink-0">
+                    {icon}
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500 font-medium uppercase tracking-widest">{label}</p>
+                    <p className="text-white font-semibold mt-0.5">{value}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Right — form */}
+          <motion.div
+            initial={{ opacity: 0, x: 20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
+          >
+            <form className="bg-white/5 border border-white/10 backdrop-blur-sm rounded-2xl p-8 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 mb-2">First Name</label>
+                  <input type="text" placeholder="Rahul"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 transition" />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-gray-400 mb-2">Last Name</label>
+                  <input type="text" placeholder="Sharma"
+                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 transition" />
+                </div>
               </div>
-              <div className='flex flex-col gap-2'>
-                <label className='font-semibold text-primary text-sm'>Last Name</label>
-                <input
-                  className='p-3 rounded-lg bg-background-secondary dark:bg-background-dark border-2 border-border-light dark:border-border-dark text-text-primary dark:text-text-dark-primary placeholder-text-secondary focus:outline-none focus:border-primary transition-all'
-                  type="text"
-                  name="lastName"
-                  placeholder='Last name'
-                  required
-                />
+
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-2">Email</label>
+                <input type="email" placeholder="rahul@example.com"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 transition" />
               </div>
-            </div>
 
-            <div className='flex flex-col gap-2'>
-              <label className='font-semibold text-primary text-sm'>Email</label>
-              <input
-                className='p-3 rounded-lg bg-background-secondary dark:bg-background-dark border-2 border-border-light dark:border-border-dark text-text-primary dark:text-text-dark-primary placeholder-text-secondary focus:outline-none focus:border-primary transition-all'
-                type="email"
-                name="email"
-                placeholder='john@example.com'
-                required
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-2">Phone</label>
+                <input type="tel" placeholder="+91 98765 43210"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 transition" />
+              </div>
 
-            <div className='flex flex-col gap-2'>
-              <label className='font-semibold text-primary text-sm'>Phone Number</label>
-              <input
-                className='p-3 rounded-lg bg-background-secondary dark:bg-background-dark border-2 border-border-light dark:border-border-dark text-text-primary dark:text-text-dark-primary placeholder-text-secondary focus:outline-none focus:border-primary transition-all'
-                type="tel"
-                name="phone"
-                placeholder='+91 98765 43210'
-                required
-              />
-            </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-400 mb-2">Message</label>
+                <textarea rows={4} placeholder="Tell us about your trip or requirements…"
+                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-gray-600 text-sm focus:outline-none focus:border-green-500/50 transition resize-none" />
+              </div>
 
-            <div className='flex flex-col gap-2'>
-              <label className='font-semibold text-primary text-sm'>Message</label>
-              <textarea
-                className='p-3 rounded-lg bg-background-secondary dark:bg-background-dark border-2 border-border-light dark:border-border-dark text-text-primary dark:text-text-dark-primary placeholder-text-secondary focus:outline-none focus:border-primary transition-all min-h-[100px] resize-none'
-                name="message"
-                placeholder='Tell us about your requirements...'
-                required
-              />
-            </div>
-
-            <motion.button 
-              type="submit"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className='w-full py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-lg flex items-center justify-center gap-2 transition-all shadow-lg hover:shadow-xl'
-            >
-              <Send size={20} />
-              Send Message
-            </motion.button>
-          </form>
-        </motion.div>
+              <button type="submit"
+                className="w-full bg-green-500 hover:bg-green-600 text-white py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all hover:shadow-lg hover:shadow-green-500/25">
+                <Send size={17} /> Send Message
+              </button>
+            </form>
+          </motion.div>
+        </div>
       </div>
-    </div>
+    </section>
   )
 }
 

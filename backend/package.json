@@ -27,7 +27,7 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-validator": "^7.3.1",
-    "firebase-admin": "^13.10.0",
+    "firebase-admin": "^13.4.0",
     "form-data": "^4.0.5",
     "groq-sdk": "^0.37.0",
     "jsonwebtoken": "^9.0.2",

@@ -5,68 +5,53 @@ import BackgroundEffects from '../components/BackgroundEffects'
 import BrandSection from '../components/BrandSection'
 import LoginCard from '../components/LoginCard'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api'
+
 const AdminLogin = () => {
   const navigate = useNavigate()
-  const [formData, setFormData] = useState({
-    email: '',
-    password: '',
-    rememberMe: false
-  })
+  const [formData, setFormData] = useState({ email: '', password: '', rememberMe: false })
   const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-
-    // Dummy admin bypass
-    if (formData.email === 'admin@rentride.com' && formData.password === 'password123') {
-      const dummyUser = { name: 'Admin User', email: 'admin@rentride.com', role: 'admin' }
-      localStorage.setItem('adminToken', 'dummy-token-12345')
-      localStorage.setItem('adminUser', JSON.stringify(dummyUser))
-      navigate('/admin/dashboard', { replace: true })
-      return
-    }
+    setLoading(true)
 
     try {
-      const response = await fetch('http://localhost:5005/api/auth/login', {
+      const response = await fetch(`${API_URL}/auth/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: formData.email,
-          password: formData.password
-        })
+        body: JSON.stringify({ email: formData.email, password: formData.password })
       })
 
       const data = await response.json()
 
-      if (response.ok) {
-        if (data.user?.role !== 'admin' && data.role !== 'admin') {
-          setError('Access denied. Admin privileges required.')
-          return
-        }
-
-        localStorage.setItem('adminToken', data.token)
-        localStorage.setItem(
-          'adminUser',
-          JSON.stringify(data.user || { email: formData.email, role: 'admin' })
-        )
-
-        navigate('/admin/dashboard', { replace: true })
-      } else {
+      if (!response.ok) {
         setError(data.message || 'Invalid email or password')
+        return
       }
+
+      // Block non-admin users
+      if (data.user?.role !== 'admin') {
+        setError('Access denied. Admin privileges required.')
+        return
+      }
+
+      localStorage.setItem('adminToken', data.token)
+      localStorage.setItem('adminUser', JSON.stringify(data.user))
+
+      navigate('/admin/dashboard', { replace: true })
     } catch (err) {
-      console.error('Login error:', err)
-      setError('Connection failed. Try "admin@rentride.com" / "password123"')
+      setError('Connection failed. Please check the server is running.')
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
-    setFormData(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }))
+    setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }))
     if (error) setError('')
   }
 
@@ -85,6 +70,7 @@ const AdminLogin = () => {
           handleChange={handleChange}
           handleSubmit={handleSubmit}
           error={error}
+          loading={loading}
         />
       </motion.main>
     </div>

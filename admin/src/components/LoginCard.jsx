@@ -1,9 +1,9 @@
 import React, { useState } from 'react'
 import { motion } from 'framer-motion'
 import logo from '../assets/logo.png'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, AlertCircle } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, ArrowLeft, AlertCircle, Loader2 } from 'lucide-react'
 
-const LoginCard = ({ formData, handleChange, handleSubmit, error }) => {
+const LoginCard = ({ formData, handleChange, handleSubmit, error, loading = false }) => {
   const [showPassword, setShowPassword] = useState(false)
 
   return (
@@ -150,19 +150,23 @@ const LoginCard = ({ formData, handleChange, handleSubmit, error }) => {
                 backgroundColor: 'var(--color-primary)'
               }}
               whileTap={{ scale: 0.98 }}
-              className="w-full bg-primary py-4 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group transition-all"
+              className="w-full bg-primary py-4 rounded-xl shadow-lg shadow-primary/20 flex items-center justify-center gap-2 group transition-all disabled:opacity-60 disabled:cursor-not-allowed"
               type="submit"
+              disabled={loading}
             >
-              <span className="font-bold text-white tracking-wider text-sm">
-                ADMIN LOGIN
-              </span>
-              <motion.span
-                animate={{ x: [0, 4, 0] }}
-                transition={{ duration: 1.5, repeat: Infinity }}
-                className="text-white"
-              >
-                <ArrowRight size={18} />
-              </motion.span>
+              {loading ? (
+                <>
+                  <Loader2 size={18} className="text-white animate-spin" />
+                  <span className="font-bold text-white tracking-wider text-sm">SIGNING IN…</span>
+                </>
+              ) : (
+                <>
+                  <span className="font-bold text-white tracking-wider text-sm">ADMIN LOGIN</span>
+                  <motion.span animate={{ x: [0, 4, 0] }} transition={{ duration: 1.5, repeat: Infinity }} className="text-white">
+                    <ArrowRight size={18} />
+                  </motion.span>
+                </>
+              )}
             </motion.button>
           </motion.form>
 

@@ -4,11 +4,8 @@ const { ErrorResponse } = require('./errorHandler');
 exports.authorize = (...roles) => {
   return (req, res, next) => {
     if (!req.user) {
-      return next(
-        new ErrorResponse('Not authorized to access this route', 401)
-      );
+      return next(new ErrorResponse('Not authorized to access this route', 401));
     }
-
     if (!roles.includes(req.user.role)) {
       return next(
         new ErrorResponse(
@@ -21,13 +18,11 @@ exports.authorize = (...roles) => {
   };
 };
 
-// Simple admin check (alternative)
+// Simple admin check shorthand
 exports.admin = (req, res, next) => {
   if (req.user && req.user.role === 'admin') {
     next();
   } else {
-    return next(
-      new ErrorResponse('Access denied. Admin privileges required.', 403)
-    );
+    return next(new ErrorResponse('Access denied. Admin privileges required.', 403));
   }
 };

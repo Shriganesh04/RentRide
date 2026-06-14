@@ -18,19 +18,6 @@ exports.protect = async (req, res, next) => {
   }
 
   try {
-    // BYPASS: Handle dummy token for development
-    if (token === 'dummy-token-12345') {
-      console.log('✅ Dummy token accepted - Development mode');
-      req.user = {
-        _id: 'dummy-admin-id',
-        name: 'Admin User',
-        email: 'admin@rentride.com',
-        role: 'admin'
-      };
-      return next();
-    }
-
-    // Verify real JWT token
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = await User.findById(decoded.id);
 
@@ -40,7 +27,6 @@ exports.protect = async (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error('❌ Token verification failed:', err.message);
     return next(new ErrorResponse('Not authorized to access this route', 401));
   }
 };

@@ -1,170 +1,143 @@
 import { Link } from 'react-router-dom'
-import { Search, Calendar, MapPin, Zap, Shield, Clock } from 'lucide-react'
+import { Search, Calendar, MapPin, ArrowRight } from 'lucide-react'
 import { motion } from 'framer-motion'
 import herocar from '../../assets/herocar1.png'
-import { FadeRight, FadeLeft } from '../../utils/Animation'
 
 export default function Hero() {
-  const user = JSON.parse(localStorage.getItem('user') || 'null');
+  const user = JSON.parse(localStorage.getItem('user') || 'null')
 
   return (
-    <section className="relative overflow-hidden">
-      {/* Background Decor */}
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-[-10%] left-[-10%] w-[520px] h-[520px] bg-primary/5 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[650px] h-[650px] bg-primary/10 rounded-full blur-[120px]" />
-      </div>
+    <section className="relative min-h-screen flex flex-col justify-center overflow-hidden bg-white dark:bg-gray-950">
+      {/* Single subtle background gradient — not multiple blobs */}
+      <div className="absolute inset-0 -z-10 bg-gradient-to-br from-green-50 via-white to-white dark:from-gray-900 dark:via-gray-950 dark:to-gray-950" />
 
-      <div className="max-w-7xl mx-auto px-4 lg:px-8 py-20 lg:py-28">
-        <div className="flex flex-col lg:flex-row items-center gap-14">
+      <div className="max-w-7xl mx-auto px-6 lg:px-12 w-full pt-24 pb-16">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
 
-          {/* Left Content */}
-          <div className="lg:w-1/2 text-text-primary space-y-6">
-            <motion.div
-              variants={FadeRight(0.2)}
-              initial="hidden"
-              animate="visible"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full
-                         bg-primary/10 border border-primary/20
-                         text-sm font-bold text-primary"
+          {/* Left */}
+          <div className="space-y-8">
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4 }}
+              className="text-green-600 font-semibold text-sm tracking-widest uppercase"
             >
-              Smart rentals • AI powered
-            </motion.div>
+              AI-powered car rentals
+            </motion.p>
 
             <motion.h1
-              variants={FadeRight(0.3)}
-              initial="hidden"
-              animate="visible"
-              className="text-4xl md:text-6xl font-black leading-tight tracking-tight"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+              className="text-5xl md:text-6xl lg:text-7xl font-bold leading-[1.05] tracking-tight text-gray-900 dark:text-white"
             >
-              Find Your
-              <span className="block text-transparent bg-clip-text bg-gradient-to-r from-primary to-primary-dark">
-                Perfect Ride
-              </span>
+              Find your
+              <br />
+              <span className="text-green-500">perfect ride.</span>
             </motion.h1>
 
             <motion.p
-              variants={FadeRight(0.4)}
-              initial="hidden"
-              animate="visible"
-              className="text-lg text-text-secondary font-medium leading-relaxed"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+              className="text-gray-500 dark:text-gray-400 text-lg leading-relaxed max-w-md"
             >
-              Premium cars at unbeatable prices. AI-powered recommendations, smooth booking, and secure payments.
+              Premium cars at honest prices. Smart recommendations, instant booking, and secure payments — all in one place.
             </motion.p>
 
-            {/* Feature Pills */}
             <motion.div
-              variants={FadeRight(0.5)}
-              initial="hidden"
-              animate="visible"
-              className="flex flex-wrap gap-4"
-            >
-              {[
-                { icon: <Zap size={18} />, text: 'Instant booking' },
-                { icon: <Shield size={18} />, text: 'Secure payments' },
-                { icon: <Clock size={18} />, text: '24/7 support' }
-              ].map((item, idx) => (
-                <div
-                  key={idx}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl
-                             bg-background-secondary border border-border-light text-text-secondary"
-                >
-                  <span className="text-primary">{item.icon}</span>
-                  <span className="text-sm font-bold uppercase tracking-wider">{item.text}</span>
-                </div>
-              ))}
-            </motion.div>
-
-            {/* CTA Buttons */}
-            <motion.div
-              variants={FadeRight(0.6)}
-              initial="hidden"
-              animate="visible"
-              className="flex flex-wrap gap-4 pt-2"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex flex-wrap gap-3"
             >
               <Link
                 to="/browsecars"
-                className="bg-primary text-white px-8 py-4 rounded-xl text-lg font-black uppercase tracking-widest shadow-lg shadow-primary/20
-                           hover:bg-primary-hover transition-all hover:scale-105 active:scale-95"
+                className="inline-flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white px-7 py-3.5 rounded-xl font-semibold transition-all hover:shadow-lg hover:shadow-green-500/25 active:scale-95"
               >
-                Browse Cars
+                Browse Fleet <ArrowRight size={17} />
               </Link>
-
               <Link
                 to="/offers"
-                className="border-2 border-primary text-primary px-8 py-4 rounded-xl text-lg font-black uppercase tracking-widest
-                           hover:bg-primary hover:text-white transition-all hover:scale-105 active:scale-95"
+                className="inline-flex items-center gap-2 border border-gray-200 dark:border-gray-700 text-gray-700 dark:text-gray-300 hover:border-green-400 hover:text-green-600 px-7 py-3.5 rounded-xl font-semibold transition-all"
               >
                 View Offers
               </Link>
             </motion.div>
+
+            {/* Minimal trust stats */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              className="flex gap-8 pt-2 border-t border-gray-100 dark:border-gray-800"
+            >
+              {[
+                { label: 'Vehicles', value: '200+' },
+                { label: 'Cities', value: '12' },
+                { label: 'Happy renters', value: '8k+' },
+              ].map(({ label, value }) => (
+                <div key={label}>
+                  <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
+                  <p className="text-xs text-gray-400 font-medium mt-0.5">{label}</p>
+                </div>
+              ))}
+            </motion.div>
           </div>
 
-          {/* Right Image */}
+          {/* Right — car image, no gimmicks */}
           <motion.div
-            variants={FadeLeft(0.3)}
-            initial="hidden"
-            animate="visible"
-            className="lg:w-1/2 relative"
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.6, delay: 0.15 }}
+            className="relative flex items-center justify-center"
           >
+            {/* Single clean shadow under the car */}
+            <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-3/4 h-10 bg-green-500/15 blur-2xl rounded-full" />
             <motion.img
               src={herocar}
-              alt="Premium Car"
-              className="w-full drop-shadow-[0_20px_50px_rgba(16,163,16,0.2)]"
-              animate={{ y: [0, -18, 0] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+              alt="Premium rental car"
+              className="relative w-full max-w-xl drop-shadow-xl"
+              animate={{ y: [0, -10, 0] }}
+              transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
             />
-            <div className="absolute inset-0 -z-10 blur-3xl bg-gradient-to-r from-primary/20 to-primary-hover/10 rounded-full" />
           </motion.div>
         </div>
 
-        {/* Quick Search Card - Only shown after login */}
+        {/* Search card — shown when logged in */}
         {user && (
           <motion.div
-            variants={FadeRight(0.7)}
-            initial="hidden"
-            animate="visible"
-            className="bg-white rounded-xl shadow-2xl p-6 max-w-4xl mx-auto mt-16"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="mt-16 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-2xl p-6 shadow-sm max-w-3xl"
           >
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-4">Quick search</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  <MapPin size={16} className="inline mr-1" />
-                  Location
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-2">
+                  <MapPin size={13} /> Location
                 </label>
-                <input
-                  type="text"
-                  placeholder="Enter city"
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary"
-                />
+                <input type="text" placeholder="Enter city"
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-400/40 transition" />
               </div>
-
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  <Calendar size={16} className="inline mr-1" />
-                  Pick-up Date
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-2">
+                  <Calendar size={13} /> Pick-up
                 </label>
-                <input
-                  type="date"
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary"
-                />
+                <input type="date"
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-400/40 transition" />
               </div>
-
               <div>
-                <label className="block text-sm font-medium mb-2">
-                  <Calendar size={16} className="inline mr-1" />
-                  Return Date
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-500 mb-2">
+                  <Calendar size={13} /> Return
                 </label>
-                <input
-                  type="date"
-                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-primary"
-                />
+                <input type="date"
+                  className="w-full px-4 py-3 border border-gray-200 dark:border-gray-700 rounded-xl text-sm bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-green-400/40 transition" />
               </div>
             </div>
-
-            <button className="w-full mt-4 bg-primary hover:bg-primary-hover text-white py-3 rounded-lg font-semibold flex items-center justify-center gap-2">
-              <Search size={20} />
-              Search Available Cars
+            <button className="w-full mt-4 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold flex items-center justify-center gap-2 transition-all">
+              <Search size={17} /> Search Available Cars
             </button>
           </motion.div>
         )}
