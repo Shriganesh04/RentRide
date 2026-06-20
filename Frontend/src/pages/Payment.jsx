@@ -137,7 +137,11 @@ const Payment = () => {
     const promoCode = incoming.promoCode ?? "";
     const promoDiscount = incoming.promoDiscount ?? 0;
 
-    const total = Math.max(0, baseFare + taxesFees + deposit - promoDiscount);
+    // Use the pre-computed totalAmount from BookingConfirmation as the source of truth.
+    // Fall back to summing components only if totalAmount wasn't passed.
+    const total = incoming.totalAmount
+      ? incoming.totalAmount
+      : Math.max(0, baseFare + taxesFees + deposit - promoDiscount);
 
     return {
       type: 'new_booking',
@@ -186,9 +190,8 @@ const Payment = () => {
   // Calculate final total with current discount
   const calculateFinalTotal = () => {
     if (!summary) return 0;
-    if (summary.type !== 'new_booking') return summary.total;
-    const baseAmount = summary.baseFare + summary.taxesFees + summary.deposit;
-    return Math.max(0, baseAmount - currentDiscount);
+    // summary.total is already baseFare + tax + deposit (computed in BookingConfirmation)
+    return Math.max(0, (summary.total || 0) - currentDiscount);
   };
 
   // UPI ID validation function
@@ -331,13 +334,13 @@ const Payment = () => {
       let order;
 
       if (summary.type === 'new_booking') {
-        // Create booking first
+        // Create booking first — backend recalculates the authoritative price
+        // server-side from car rates + dates, so we don't send totalPrice here.
         const bookingData = {
           carId: summary.carId,
           startDate: summary.startDate,
           endDate: summary.endDate,
-          totalPrice: calculateFinalTotal(),
-          discount: currentDiscount,
+          rentalMode: incoming.rentalMode || 'daily',
           promotionCode: currentPromoCode || null
         };
 

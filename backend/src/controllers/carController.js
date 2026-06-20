@@ -1,4 +1,5 @@
 const Car = require('../models/Car');
+const { uploadBufferToCloudinary, deleteFromCloudinary, extractPublicId } = require('../config/cloudinary');
 
 // Shared list of all numeric fields on the Car model
 const NUMERIC_FIELDS = [
@@ -166,8 +167,64 @@ exports.deleteCar = async (req, res) => {
   try {
     const car = await Car.findByIdAndDelete(req.params.id);
     if (!car) return res.status(404).json({ success: false, message: 'Car not found' });
+
+    // Clean up Cloudinary images (best-effort, doesn't block the response)
+    if (car.images?.length) {
+      car.images.forEach(url => {
+        const publicId = extractPublicId(url);
+        if (publicId) deleteFromCloudinary(publicId);
+      });
+    }
+
     res.json({ success: true, message: 'Car deleted successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Error deleting car', error: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// POST /api/cars/upload-images  (admin only)
+// Accepts multipart/form-data with field name 'images' (up to 6 files)
+// Uploads each to Cloudinary, returns the secure URLs.
+// ─────────────────────────────────────────────────────────────────
+exports.uploadCarImages = async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ success: false, message: 'No image files provided' });
+    }
+
+    const uploads = await Promise.all(
+      req.files.map(file => uploadBufferToCloudinary(file.buffer, 'rentride/cars'))
+    );
+
+    const urls = uploads.map(u => u.url);
+
+    res.status(201).json({
+      success: true,
+      message: `${urls.length} image(s) uploaded successfully`,
+      data: { images: urls }
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Image upload failed', error: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────────────────────────
+// DELETE /api/cars/upload-images  (admin only)
+// Body: { url: 'https://res.cloudinary.com/...' }
+// Removes a single image from Cloudinary (used when admin removes an
+// image from the form before saving, or replaces one).
+// ─────────────────────────────────────────────────────────────────
+exports.deleteCarImage = async (req, res) => {
+  try {
+    const { url } = req.body;
+    if (!url) return res.status(400).json({ success: false, message: 'Image url is required' });
+
+    const publicId = extractPublicId(url);
+    if (publicId) await deleteFromCloudinary(publicId);
+
+    res.json({ success: true, message: 'Image removed' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to remove image', error: error.message });
   }
 };

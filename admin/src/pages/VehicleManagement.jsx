@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Plus, Trash2, X, Fuel, Settings, CarFront, Activity,
   CheckCircle, RefreshCw, Search, Users, Zap, Shield,
-  Music, ChevronRight, ChevronLeft, MapPin, Star, Edit2
+  Music, ChevronRight, ChevronLeft, MapPin, Star, Edit2,
+  Upload, ImageIcon, Loader2
 } from 'lucide-react';
 import axios from 'axios';
 
@@ -60,7 +61,108 @@ const Select = ({ label, children, ...props }) => (
   </Field>
 );
 
-// Tag input — press Enter or comma to add
+// Image uploader — drag/drop or click to upload, sends files to backend
+// which uploads them to Cloudinary and returns hosted URLs.
+const ImageUploader = ({ images, onChange }) => {
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
+  const fileInputRef = React.useRef(null);
+
+  const handleFiles = async (fileList) => {
+    const files = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+    if (files.length === 0) return;
+
+    if (images.length + files.length > 6) {
+      setError('Maximum 6 images per vehicle.');
+      return;
+    }
+
+    setError('');
+    setUploading(true);
+    try {
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      const formData = new FormData();
+      files.forEach(f => formData.append('images', f));
+
+      const res = await axios.post(`${API_URL}/cars/upload-images`, formData, {
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' },
+      });
+
+      if (res.data.success) {
+        onChange([...images, ...res.data.data.images]);
+      } else {
+        setError('Upload failed. Try again.');
+      }
+    } catch (err) {
+      setError(err.response?.data?.message || 'Upload failed. Check your connection.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemove = async (url, index) => {
+    onChange(images.filter((_, i) => i !== index));
+    // Best-effort cleanup on Cloudinary — don't block UI on this
+    try {
+      const token = localStorage.getItem('adminToken') || localStorage.getItem('token');
+      await axios.delete(`${API_URL}/cars/upload-images`, {
+        headers: { Authorization: `Bearer ${token}` },
+        data: { url },
+      });
+    } catch { /* non-fatal */ }
+  };
+
+  return (
+    <Field label="Vehicle Images">
+      {/* Drop zone */}
+      <div
+        onClick={() => fileInputRef.current?.click()}
+        onDragOver={e => e.preventDefault()}
+        onDrop={e => { e.preventDefault(); handleFiles(e.dataTransfer.files); }}
+        className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center cursor-pointer hover:border-blue-300 hover:bg-blue-50/30 transition-all"
+      >
+        <input ref={fileInputRef} type="file" accept="image/*" multiple hidden
+          onChange={e => handleFiles(e.target.files)} />
+        {uploading ? (
+          <div className="flex flex-col items-center gap-2 text-blue-500">
+            <Loader2 size={26} className="animate-spin" />
+            <p className="text-xs font-bold">Uploading to Cloudinary…</p>
+          </div>
+        ) : (
+          <div className="flex flex-col items-center gap-2 text-gray-400">
+            <Upload size={26} />
+            <p className="text-xs font-bold text-gray-500">Click or drag images here</p>
+            <p className="text-[10px] text-gray-400">JPG, PNG, WEBP up to 5MB · max 6 images</p>
+          </div>
+        )}
+      </div>
+
+      {error && <p className="text-[11px] text-red-500 font-bold mt-1.5">{error}</p>}
+
+      {/* Preview grid */}
+      {images.length > 0 && (
+        <div className="grid grid-cols-3 gap-2 mt-3">
+          {images.map((url, i) => (
+            <div key={i} className="relative group rounded-xl overflow-hidden border border-gray-200 h-24 bg-gray-50">
+              <img src={url} alt={`Vehicle ${i + 1}`} className="w-full h-full object-cover" />
+              {i === 0 && (
+                <span className="absolute top-1 left-1 bg-blue-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded-md">
+                  Cover
+                </span>
+              )}
+              <button type="button" onClick={() => handleRemove(url, i)}
+                className="absolute top-1 right-1 w-6 h-6 bg-black/60 hover:bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                <X size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </Field>
+  );
+};
+
+
 const TagInput = ({ label, tags, onChange, placeholder }) => {
   const [input, setInput] = useState('');
   const add = () => {
@@ -115,7 +217,7 @@ const EMPTY_FORM = {
   features: [], safetyFeatures: [], comfortFeatures: [], entertainmentFeatures: [],
   highlights: [],
   // Media & Notes
-  imageUrl: '', description: '',
+  images: [], description: '',
   odometerKm: '', lastServicedAt: '',
 };
 
@@ -165,12 +267,7 @@ const VehicleManagement = () => {
     }
     setIsSubmitting(true);
     try {
-      const payload = {
-        ...formData,
-        images: formData.imageUrl ? [formData.imageUrl] : [],
-      };
-      delete payload.imageUrl;
-      await axios.post(`${API_URL}/cars`, payload, { headers: getAuthHeader() });
+      await axios.post(`${API_URL}/cars`, formData, { headers: getAuthHeader() });
       setIsModalOpen(false);
       setFormData(EMPTY_FORM);
       setActiveTab('basics');
@@ -496,16 +593,7 @@ const VehicleManagement = () => {
                   {/* ── MEDIA & NOTES ── */}
                   {activeTab === 'media' && (
                     <>
-                      <Input label="Image URL" type="url" placeholder="https://… (Cloudinary, imgbb, or any direct image link)"
-                        value={formData.imageUrl} onChange={e => set('imageUrl', e.target.value)} />
-
-                      {formData.imageUrl && (
-                        <div className="rounded-2xl overflow-hidden border border-gray-200 h-48 flex items-center justify-center bg-gray-50">
-                          <img src={formData.imageUrl} alt="Preview"
-                            className="max-h-full max-w-full object-contain"
-                            onError={e => { e.target.style.display = 'none'; }} />
-                        </div>
-                      )}
+                      <ImageUploader images={formData.images} onChange={v => set('images', v)} />
 
                       <Field label="Description">
                         <textarea rows={5} placeholder="Describe the vehicle — condition, comfort, ideal trips…"

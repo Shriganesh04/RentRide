@@ -5,8 +5,8 @@ const Promotion = require('../models/Promotion');
 // Create booking with promotion
 exports.createBooking = async (req, res) => {
   try {
-    const { carId, startDate, endDate, promotionCode } = req.body;
-    
+    const { carId, startDate, endDate, promotionCode, rentalMode } = req.body;
+
     // Get car details
     const car = await Car.findById(carId);
     if (!car) {
@@ -15,7 +15,7 @@ exports.createBooking = async (req, res) => {
         message: 'Car not found'
       });
     }
-    
+
     // Check car availability
     if (!car.available) {
       return res.status(400).json({
@@ -23,47 +23,92 @@ exports.createBooking = async (req, res) => {
         message: 'Car is not available'
       });
     }
-    
-    // Calculate base price
-    const days = Math.ceil((new Date(endDate) - new Date(startDate)) / (1000 * 60 * 60 * 24));
-    let totalPrice = car.pricePerDay * days;
-    
-    // Apply promotion if provided
+
+    const start = new Date(startDate);
+    const end   = new Date(endDate);
+
+    if (isNaN(start.getTime()) || isNaN(end.getTime()) || end <= start) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid date range: end date must be after start date'
+      });
+    }
+
+    // Prevent double-booking — check for overlapping active bookings on this car
+    const conflict = await Booking.findOne({
+      car: carId,
+      status: { $in: ['pending', 'confirmed'] },
+      startDate: { $lt: end },
+      endDate: { $gt: start }
+    });
+    if (conflict) {
+      return res.status(409).json({
+        success: false,
+        message: 'This vehicle is already booked for an overlapping time period.'
+      });
+    }
+
+    // Determine mode — hourly only valid if car actually has an hourly rate
+    const mode = (rentalMode === 'hourly' && car.pricePerHour > 0) ? 'hourly' : 'daily';
+
+    let durationDays = null;
+    let durationHours = null;
+    let baseFare;
+
+    if (mode === 'hourly') {
+      durationHours = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60)));
+      baseFare = car.pricePerHour * durationHours;
+    } else {
+      durationDays = Math.max(1, Math.ceil((end - start) / (1000 * 60 * 60 * 24)));
+      baseFare = car.pricePerDay * durationDays;
+    }
+
+    const taxesFees = Math.round(baseFare * 0.12);
+    const deposit   = car.depositAmount > 0 ? car.depositAmount : 500;
+    let totalPrice  = baseFare + taxesFees + deposit;
+
+    // Apply promotion if provided — discount applies to baseFare, not the final total
     let promotion = null;
     let discount = 0;
-    
+
     if (promotionCode) {
-      promotion = await Promotion.findOne({ 
-        code: promotionCode.toUpperCase() 
+      promotion = await Promotion.findOne({
+        code: promotionCode.toUpperCase()
       });
-      
+
       if (promotion && promotion.isValid() && promotion.isApplicableToVehicle(carId)) {
-        if (totalPrice >= promotion.minBookingAmount) {
-          discount = promotion.calculateDiscount(totalPrice);
-          totalPrice = totalPrice - discount;
-          
-          // Increment usage count
+        if (baseFare >= promotion.minBookingAmount) {
+          discount = promotion.calculateDiscount(baseFare);
+          totalPrice = Math.max(0, totalPrice - discount);
+
           promotion.usedCount += 1;
           await promotion.save();
         }
       }
     }
-    
+
     // Create booking
     const booking = await Booking.create({
       user: req.user._id,
       car: carId,
-      startDate,
-      endDate,
+      startDate: start,
+      endDate: end,
+      rentalMode: mode,
+      durationDays,
+      durationHours,
       promotion: promotion ? promotion._id : null,
       promotionCode: promotionCode || null,
       discount,
       totalPrice
     });
-    
+
+    // Mark the car unavailable while this booking is active
+    car.available = false;
+    await car.save();
+
     // Populate car details
-    await booking.populate('car', 'name brand model pricePerDay');
-    
+    await booking.populate('car', 'name brand model pricePerDay pricePerHour');
+
     res.status(201).json({
       success: true,
       message: 'Booking created successfully',

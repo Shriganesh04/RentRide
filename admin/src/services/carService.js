@@ -31,18 +31,25 @@ export const carService = {
     return response.data;
   },
 
-  // Upload car images
-  uploadCarImages: async (carId, images) => {
+  // Upload car images to Cloudinary — returns array of hosted URLs.
+  // Works for both new (unsaved) and existing cars since it doesn't need a carId.
+  uploadCarImages: async (images) => {
     const formData = new FormData();
     images.forEach((image) => {
       formData.append('images', image);
     });
 
-    const response = await adminApi.post(`/cars/${carId}/images`, formData, {
+    const response = await adminApi.post('/cars/upload-images', formData, {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  },
+
+  // Remove a single uploaded image from Cloudinary by its URL
+  deleteCarImage: async (url) => {
+    const response = await adminApi.delete('/cars/upload-images', { data: { url } });
     return response.data;
   },
 };

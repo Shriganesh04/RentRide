@@ -1,61 +1,69 @@
 const mongoose = require('mongoose');
 
-const paymentSchema = new mongoose.Schema({
-  booking: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Booking',
-    required: true
-  },
+const bookingSchema = new mongoose.Schema({
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
-  amount: {
-    type: Number,
+  car: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Car',
     required: true
   },
-  paymentMethod: {
-    type: String,
-    enum: ['UPI', 'Credit Card', 'Debit Card', 'Net Banking', 'Wallet', 'Manual', 'Cash'],
-    required: false,
-    default: null
-  },
-  transactionId: {
-    type: String,
-    required: false
-  },
-  orderId: {
-    type: String,
-    default: null,
-    index: true
-  },
-  status: {
-    type: String,
-    enum: ['pending', 'approved', 'paid', 'failed', 'refunded'],
-    default: 'pending'
-  },
-  paymentDate: {
+  startDate: {
     type: Date,
+    required: true
+  },
+  endDate: {
+    type: Date,
+    required: true
+  },
+  rentalMode: {
+    type: String,
+    enum: ['daily', 'hourly'],
+    default: 'daily'
+  },
+  durationDays: {
+    type: Number,
     default: null
   },
-  refundAmount: {
+  durationHours: {
+    type: Number,
+    default: null
+  },
+  // ✅ ADD THESE PROMOTION FIELDS
+  promotion: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Promotion',
+    default: null
+  },
+  promotionCode: {
+    type: String,
+    default: null
+  },
+  discount: {
     type: Number,
     default: 0
   },
-  refundDate: {
-    type: Date,
-    default: null
+  // END PROMOTION FIELDS
+  
+  totalPrice: {
+    type: Number,
+    required: true
   },
-  metadata: {
-    type: Object,
-    default: {}
+  status: {
+    type: String,
+    enum: ['pending', 'confirmed', 'cancelled', 'completed'],
+    default: 'pending'
+  },
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid', 'failed', 'refunded'],
+    default: 'pending'
   }
 }, {
   timestamps: true
 });
 
-// Define the sparse unique index ONLY here (not in schema field definition)
-paymentSchema.index({ transactionId: 1 }, { unique: true, sparse: true });
-
-module.exports = mongoose.model('Payment', paymentSchema);
+module.exports = mongoose.model('Booking', bookingSchema);

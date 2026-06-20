@@ -136,19 +136,7 @@ const CarDetails = () => {
   const hasPerformance = car.horsepower || car.torqueNm || car.topSpeedKmh || car.zeroTo100 || car.engineType;
   const hasEfficiency  = car.mileage || car.evRangeKm || car.fuelTankL || car.batteryKwh;
 
-  const handleBookNow = () => navigate('/booking-confirmation', {
-    state: {
-      car,
-      bookingDetails: {
-        startDate: new Date().toISOString(),
-        endDate: new Date(Date.now() + 2 * 86400000).toISOString(),
-        days: 2,
-        pickupLocation: car.location || 'Main Hub',
-        dropoffLocation: car.location || 'Main Hub',
-        totalPrice: car.pricePerDay * 2
-      }
-    }
-  });
+  const handleBookNow = () => navigate('/booking-confirmation', { state: { car } });
 
   const SECTIONS = [
     { id: 'overview',     label: 'Overview' },
