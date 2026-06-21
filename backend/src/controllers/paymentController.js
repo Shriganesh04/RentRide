@@ -11,6 +11,10 @@ exports.createPayment = async (req, res, next) => {
     try {
         const { bookingId } = req.body;
 
+        if (!bookingId) {
+            return next(new ErrorResponse('bookingId is required', 400));
+        }
+
         const booking = await Booking.findById(bookingId);
 
         if (!booking) {
@@ -80,34 +84,41 @@ exports.verifyPayment = async (req, res, next) => {
     try {
         const { orderId, paymentId, signature } = req.body;
 
+        if (!orderId || !paymentId || !signature) {
+            return next(new ErrorResponse('Missing required payment verification fields', 400));
+        }
+
         const isSignatureValid = verifySignature(orderId, paymentId, signature);
 
-        if (isSignatureValid) {
-            const payment = await Payment.findOne({ orderId });
+        const payment = await Payment.findOne({ orderId });
+        if (!payment) {
+            return next(new ErrorResponse('Payment record not found', 404));
+        }
 
-            if (!payment) {
-                return next(new ErrorResponse('Payment record not found', 404));
-            }
-
+        if (!isSignatureValid) {
+            // Record the failed attempt instead of leaving it stuck on 'pending'
+            payment.status = 'failed';
             payment.transactionId = paymentId;
-            payment.status = 'paid';
             await payment.save();
-
-            // Update Booking
-            const booking = await Booking.findById(payment.booking);
-            if (booking) {
-                booking.paymentStatus = 'paid';
-                booking.status = 'confirmed';
-                await booking.save();
-            }
-
-            res.status(200).json({
-                success: true,
-                message: 'Payment verified successfully'
-            });
-        } else {
             return next(new ErrorResponse('Invalid signature', 400));
         }
+
+        payment.transactionId = paymentId;
+        payment.status = 'paid';
+        await payment.save();
+
+        // Update Booking
+        const booking = await Booking.findById(payment.booking);
+        if (booking) {
+            booking.paymentStatus = 'paid';
+            booking.status = 'confirmed';
+            await booking.save();
+        }
+
+        res.status(200).json({
+            success: true,
+            message: 'Payment verified successfully'
+        });
     } catch (err) {
         console.error('Payment verification error:', err);
         next(err);
@@ -146,6 +157,26 @@ exports.createDamagePayment = async (req, res, next) => {
         // Create Razorpay Order
         const order = await createOrder(damageReport.actualCost);
 
+        // Track this payment so it shows up in payment history (was previously skipped)
+        let existingDamagePayment = await Payment.findOne({
+            damageReport: damageReportId,
+            status: 'pending'
+        });
+
+        if (existingDamagePayment) {
+            existingDamagePayment.orderId = order.id;
+            existingDamagePayment.amount = damageReport.actualCost;
+            await existingDamagePayment.save();
+        } else {
+            await Payment.create({
+                damageReport: damageReportId,
+                user: req.user.id,
+                amount: damageReport.actualCost,
+                orderId: order.id,
+                status: 'pending'
+            });
+        }
+
         res.status(200).json({
             success: true,
             order
@@ -178,6 +209,15 @@ exports.verifyDamagePayment = async (req, res, next) => {
             damageReport.paymentId = paymentId;
             damageReport.status = 'resolved'; // Mark as resolved after payment
             await damageReport.save();
+
+            // Update the matching Payment record (was previously skipped — payment
+            // history was missing damage payments)
+            const payment = await Payment.findOne({ orderId, damageReport: damageReportId });
+            if (payment) {
+                payment.transactionId = paymentId;
+                payment.status = 'paid';
+                await payment.save();
+            }
 
             res.status(200).json({
                 success: true,

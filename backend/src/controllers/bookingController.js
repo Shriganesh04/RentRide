@@ -264,6 +264,9 @@ exports.cancelBooking = async (req, res) => {
     booking.status = 'cancelled';
     booking.paymentStatus = 'failed';
     await booking.save();
+
+    // Free up the car so it can be booked again
+    await Car.findByIdAndUpdate(booking.car, { available: true });
     
     res.json({
       success: true,
@@ -282,17 +285,32 @@ exports.cancelBooking = async (req, res) => {
 // Update booking (Admin only)
 exports.updateBooking = async (req, res) => {
   try {
+    // Allowlist — admin can only touch these fields via this endpoint
+    const ALLOWED = ['status', 'paymentStatus', 'startDate', 'endDate'];
+    const update = {};
+    ALLOWED.forEach(f => {
+      if (req.body[f] !== undefined) update[f] = req.body[f];
+    });
+
     const booking = await Booking.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      { $set: update },
       { new: true, runValidators: true }
     ).populate('car', 'name brand model');
-    
+
     if (!booking) {
       return res.status(404).json({
         success: false,
         message: 'Booking not found'
       });
+    }
+
+    // Free the car when a booking is cancelled or completed.
+    // Re-lock it if an admin reactivates a booking back to pending/confirmed.
+    if (['cancelled', 'completed'].includes(update.status)) {
+      await Car.findByIdAndUpdate(booking.car._id || booking.car, { available: true });
+    } else if (['pending', 'confirmed'].includes(update.status)) {
+      await Car.findByIdAndUpdate(booking.car._id || booking.car, { available: false });
     }
     
     res.json({
@@ -320,6 +338,9 @@ exports.deleteBooking = async (req, res) => {
         message: 'Booking not found'
       });
     }
+
+    // Free up the car since this booking no longer exists
+    await Car.findByIdAndUpdate(booking.car, { available: true });
     
     res.json({
       success: true,

@@ -14,6 +14,10 @@ const razorpay = new Razorpay({
  */
 exports.createOrder = async (amount, additionalOptions = {}) => {
     try {
+        if (!amount || amount * 100 < 100) {
+            throw new Error('Amount must be at least ₹1 (100 paise)');
+        }
+
         const options = {
             amount: amount * 100, // amount in paise
             currency: additionalOptions.currency || 'INR',

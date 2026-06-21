@@ -4,6 +4,8 @@ import { motion } from 'framer-motion'
 import { paymentEventService } from '../services/paymentService'
 import axios from 'axios'
 
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+
 const BookingManagement = () => {
   const [bookings, setBookings] = useState([])
   const [loading, setLoading] = useState(false)
@@ -15,7 +17,7 @@ const BookingManagement = () => {
     setLoading(true)
     try {
       const token = localStorage.getItem('adminToken')
-      const response = await axios.get('http://localhost:5005/api/bookings', {
+      const response = await axios.get(`${API_URL}/bookings`, {
         headers: {
           Authorization: `Bearer ${token}`
         }
@@ -62,7 +64,7 @@ const BookingManagement = () => {
     try {
       const token = localStorage.getItem('adminToken')
       const response = await axios.put(
-        `http://localhost:5005/api/bookings/${id}`,
+        `${API_URL}/bookings/${id}`,
         { status },
         {
           headers: {

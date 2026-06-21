@@ -275,7 +275,7 @@ const Payment = () => {
     try {
       // Call your promotion validation API
       const token = localStorage.getItem('token');
-      const response = await fetch(`http://localhost:5005/api/promotions/validate`, {
+      const response = await fetch(`http://localhost:5000/api/promotions/validate`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -365,11 +365,14 @@ const Payment = () => {
       }
 
       // Initialize Razorpay payment
+      const currentUser = JSON.parse(localStorage.getItem('user') || 'null');
       const paymentResult = await initRazorpayPayment(
         order,
         {
           name: summary.carName,
           description: summary.type === 'damage' ? 'Damage Repair Bill' : `${summary.days} days rental`,
+          email: currentUser?.email || '',
+          contact: currentUser?.phone || '',
         },
         async (response) => {
           // Payment successful callback

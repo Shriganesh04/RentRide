@@ -5,7 +5,7 @@ import BackgroundEffects from '../components/BackgroundEffects'
 import BrandSection from '../components/BrandSection'
 import LoginCard from '../components/LoginCard'
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5005/api'
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
 
 const AdminLogin = () => {
   const navigate = useNavigate()
