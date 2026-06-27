@@ -216,40 +216,6 @@ const DamageReportDetail = () => {
                 {report.description}
               </p>
             </motion.div>
-
-            {/* AI Analysis */}
-            {report.aiAnalysis && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="rounded-2xl border p-6 bg-blue-50"
-                style={{ borderColor: 'rgba(59, 130, 246, 0.3)' }}
-              >
-                <h2 className="text-xl font-black mb-4 text-blue-700">
-                  🤖 AI Analysis
-                </h2>
-                <div className="grid grid-cols-3 gap-4 mb-4">
-                  <div>
-                    <p className="text-xs font-bold text-blue-600 mb-1">Damage Type</p>
-                    <p className="font-bold text-blue-800">{report.aiAnalysis.damageType}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-blue-600 mb-1">Severity</p>
-                    <p className="font-bold text-blue-800">{report.aiAnalysis.severity}</p>
-                  </div>
-                  <div>
-                    <p className="text-xs font-bold text-blue-600 mb-1">Estimated Cost</p>
-                    <p className="font-bold text-blue-800">
-                      ₹{report.aiAnalysis.estimatedCost?.toLocaleString()}
-                    </p>
-                  </div>
-                </div>
-                <p className="text-sm text-blue-700">
-                  {report.aiAnalysis.description}
-                </p>
-              </motion.div>
-            )}
           </div>
 
           {/* Sidebar */}
@@ -368,7 +334,7 @@ const DamageReportDetail = () => {
               </h3>
               <div className="space-y-3 text-sm">
                 <div className="flex justify-between">
-                  <span style={{ color: theme.textSecondary }}>AI Estimate</span>
+                  <span style={{ color: theme.textSecondary }}>Initial Estimate</span>
                   <span className="font-bold" style={{ color: theme.text }}>
                     ₹{report.estimatedCost?.toLocaleString()}
                   </span>

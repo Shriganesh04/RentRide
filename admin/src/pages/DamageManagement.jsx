@@ -96,7 +96,6 @@ const ContentArea = () => {
         originalStatus: report.status,
         description: report.description,
         evidenceImages: report.images || [],
-        aiAnalysis: report.aiAnalysis || {},
         estimatedCost: report.estimatedCost || 0,
         actualCost: report.actualCost || 0,
         adminNotes: report.adminNotes || ''
@@ -289,16 +288,6 @@ const ContentArea = () => {
                     }`}>
                     {claim.status}
                   </span>
-                  {claim.aiAnalysis?.severity && (
-                    <div className="flex items-center gap-1.5">
-                      <span className={`size-1.5 rounded-full ${claim.aiAnalysis.severity === 'Severe' ? 'bg-red-500 animate-pulse' :
-                          claim.aiAnalysis.severity === 'Moderate' ? 'bg-yellow-500' : 'bg-gray-400'
-                        }`} />
-                      <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                        {claim.aiAnalysis.severity}
-                      </span>
-                    </div>
-                  )}
                 </div>
 
                 {selectedClaim?.id === claim.id && (
@@ -396,28 +385,6 @@ const ContentArea = () => {
                       {selectedClaim.description}
                     </p>
                   </div>
-
-                  {selectedClaim.aiAnalysis?.description && (
-                    <div className="bg-blue-50 rounded-2xl p-5 border border-blue-100 mt-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <AlertTriangle size={16} className="text-blue-600" />
-                        <span className="text-xs font-black uppercase tracking-widest text-blue-600">AI Analysis</span>
-                      </div>
-                      <p className="text-sm font-medium text-blue-800 leading-relaxed">
-                        {selectedClaim.aiAnalysis.description}
-                      </p>
-                      <div className="mt-3 flex gap-4">
-                        <div>
-                          <span className="text-xs font-bold text-blue-600 block">Severity</span>
-                          <span className="text-sm font-black text-blue-900">{selectedClaim.aiAnalysis.severity}</span>
-                        </div>
-                        <div>
-                          <span className="text-xs font-bold text-blue-600 block">Est. Cost</span>
-                          <span className="text-sm font-black text-blue-900">₹{selectedClaim.aiAnalysis.estimatedCost?.toLocaleString()}</span>
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
 

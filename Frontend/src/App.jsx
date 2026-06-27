@@ -10,7 +10,6 @@ import CarDetails from "./pages/CarDetails";
 import MyBookings from "./pages/MyBookings";
 import Payment from "./pages/Payment";
 import Offers from "./pages/OffersCode";
-import AIAssistant from "./pages/AIAssistant";
 import Dashboard from "./pages/AppDashboard";
 import Aboutx from "./pages/Aboutx";
 import SignIn from "./components/auth/SignIn";
@@ -20,6 +19,7 @@ import BookingConfirmation from "./pages/BookingConfirmation";
 import PaymentSuccess from "./pages/PaymentSuccess";
 import ReportDamage from "./pages/ReportDamage";
 import MyDamageReports from "./pages/MyDamageReports";
+import MyWallet from "./pages/MyWallet";
 import AdminDamageReports from "./pages/AdminDamageReports";
 import DamageReportDetail from "./pages/DamageReportDetail";
 import UserProfile from "./pages/UserProfile";
@@ -44,7 +44,6 @@ export default function App() {
     "/mybookings",
     "/payment",
     "/offers",
-    "/aiassistant",
     "/booking-confirmation",
     "/payment-success",
     "/report-damage",
@@ -121,7 +120,6 @@ export default function App() {
           <Route path="/browsecars" element={<BrowseCars />} />
           <Route path="/car/:id" element={<CarDetails />} />
           <Route path="/offers" element={<Offers />} />
-          <Route path="/aiassistant" element={<AIAssistant />} />
           <Route path="/payment-success" element={<PaymentSuccess />} />
 
           {/* Protected Routes */}
@@ -135,6 +133,7 @@ export default function App() {
             <Route path="/report-damage/:bookingId" element={<ReportDamage />} />
             <Route path="/my-damage-reports" element={<MyDamageReports />} />
             <Route path="/damage-report/:id" element={<DamageReportDetail />} />
+            <Route path="/my-wallet" element={<MyWallet />} />
             <Route path="/admin-damage-reports" element={<AdminDamageReports />} />
 
             {/* User Profile Routes */}

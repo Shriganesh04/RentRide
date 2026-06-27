@@ -194,27 +194,6 @@ const MyDamageReports = () => {
                   {report.description}
                 </p>
 
-                {/* AI Analysis */}
-                {report.aiAnalysis && (
-                  <div 
-                    className="mb-4 p-4 rounded-xl border"
-                    style={{
-                      backgroundColor: theme.inputBg,
-                      borderColor: theme.border
-                    }}
-                  >
-                    <p className="text-xs font-bold mb-1" style={{ color: theme.textSecondary }}>
-                      AI Analysis
-                    </p>
-                    <p className="text-sm font-semibold mb-1" style={{ color: theme.text }}>
-                      {report.aiAnalysis.damageType} • {report.aiAnalysis.severity}
-                    </p>
-                    <p className="text-xs text-green-500 font-bold">
-                      Est. Cost: ₹{report.aiAnalysis.estimatedCost?.toLocaleString()}
-                    </p>
-                  </div>
-                )}
-
                 {/* Admin Decision */}
                 {report.status === 'approved' && report.actualCost && (
                   <div 

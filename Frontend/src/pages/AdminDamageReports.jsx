@@ -315,41 +315,6 @@ const AdminDamageReports = () => {
                         {report.description}
                       </p>
                     </div>
-
-                    {/* AI Analysis */}
-                    {report.aiAnalysis && (
-                      <div 
-                        className="p-4 rounded-xl border bg-blue-50"
-                        style={{ borderColor: 'rgba(59, 130, 246, 0.3)' }}
-                      >
-                        <p className="text-xs font-bold uppercase tracking-wider mb-2 text-blue-700">
-                          🤖 AI Analysis
-                        </p>
-                        <div className="grid grid-cols-3 gap-4 mb-2">
-                          <div>
-                            <p className="text-xs text-blue-600">Damage Type</p>
-                            <p className="text-sm font-bold text-blue-800">
-                              {report.aiAnalysis.damageType}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-blue-600">Severity</p>
-                            <p className="text-sm font-bold text-blue-800">
-                              {report.aiAnalysis.severity}
-                            </p>
-                          </div>
-                          <div>
-                            <p className="text-xs text-blue-600">Est. Cost</p>
-                            <p className="text-sm font-bold text-blue-800">
-                              ₹{report.aiAnalysis.estimatedCost?.toLocaleString()}
-                            </p>
-                          </div>
-                        </div>
-                        <p className="text-xs text-blue-700">
-                          {report.aiAnalysis.description}
-                        </p>
-                      </div>
-                    )}
                   </div>
 
                   {/* Right: Actions */}
@@ -479,7 +444,7 @@ const AdminDamageReports = () => {
                       }}
                     />
                     <p className="text-xs mt-2" style={{ color: theme.textSecondary }}>
-                      AI Estimated: ₹{selectedReport?.estimatedCost?.toLocaleString()}
+                      Initial Estimate: ₹{selectedReport?.estimatedCost?.toLocaleString()}
                     </p>
                   </div>
 

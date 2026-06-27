@@ -6,6 +6,7 @@ import VehicleManagement from './pages/VehicleManagement'
 import BookingManagement from './pages/BookingManagement'
 import Analytics from './pages/Analytics'
 import DamageManagement from './pages/DamageManagement'
+import ReturnManagement from './pages/ReturnManagement'
 import UserManagement from './pages/UserManagement'
 import PaymentRevenue from './pages/PaymentRevenue'
 import PricingPromotions from './pages/PricingPromotions'
@@ -71,6 +72,7 @@ function App() {
           <Route path="promotions" element={<PricingPromotions />} />
           <Route path="analytics" element={<Analytics />} />
           <Route path="damage" element={<DamageManagement />} />
+          <Route path="returns" element={<ReturnManagement />} />
           
           {/* Catch-all for unknown admin routes */}
           <Route path="*" element={<Navigate to="/admin/dashboard" replace />} />

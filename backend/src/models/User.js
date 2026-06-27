@@ -68,6 +68,18 @@ const UserSchema = new mongoose.Schema({
         enum: ['user', 'admin'],
         default: 'user'
     },
+    walletBalance: {
+        type: Number,
+        default: 0,
+        min: 0
+    },
+    // True when the user has an unpaid fine and no deposit was available to
+    // cover it. Blocks new bookings only — browsing, login, and viewing
+    // existing bookings/history remain unaffected.
+    bookingBlocked: {
+        type: Boolean,
+        default: false
+    },
     createdAt: {
         type: Date,
         default: Date.now

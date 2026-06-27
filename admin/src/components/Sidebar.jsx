@@ -12,7 +12,8 @@ import {
   CreditCard,
   Tag,
   Settings,
-  LogOut
+  LogOut,
+  RotateCcw
 } from 'lucide-react'
 
 const Sidebar = () => {
@@ -36,6 +37,7 @@ const Sidebar = () => {
     { icon: <Tag size={20} />, label: 'Offers & Coupons', path: '/admin/promotions' },
     { icon: <BarChart3 size={20} />, label: 'Analytics', path: '/admin/analytics' },
     { icon: <AlertTriangle size={20} />, label: 'Damage Reports', path: '/admin/damage' },
+    { icon: <RotateCcw size={20} />, label: 'Vehicle Returns', path: '/admin/returns' },
   ]
 
   return (

@@ -45,9 +45,6 @@ const Dashboard = () => {
               <button className="text-text-primary hover:text-primary font-medium transition-colors">
                 My Bookings
               </button>
-              <button className="text-text-primary hover:text-primary font-medium transition-colors">
-                AI Assistant
-              </button>
 
               {/* User Profile */}
               <div className="flex items-center space-x-4 pl-6 border-l border-border-light">
@@ -83,9 +80,6 @@ const Dashboard = () => {
               </button>
               <button className="block w-full text-left text-text-primary hover:text-primary py-2 px-4 rounded-lg font-medium">
                 My Bookings
-              </button>
-              <button className="block w-full text-left text-text-primary hover:text-primary py-2 px-4 rounded-lg font-medium">
-                AI Assistant
               </button>
               <button
                 onClick={handleLogout}

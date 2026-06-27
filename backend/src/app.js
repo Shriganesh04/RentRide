@@ -124,13 +124,6 @@ try {
 }
 
 try {
-    app.use('/api/ai', require('./routes/aiRoutes'));
-    console.log('✅ AI routes loaded');
-} catch (error) {
-    console.error('❌ AI routes failed:', error.message);
-}
-
-try {
     app.use('/api/admin', require('./routes/adminRoutes'));
     console.log('✅ Admin routes loaded');
 } catch (error) {
@@ -142,6 +135,20 @@ try {
     console.log('✅ Promotion routes loaded');
 } catch (error) {
     console.error('❌ Promotion routes failed:', error.message);
+}
+
+try {
+    app.use('/api/returns', require('./routes/vehicleReturnRoutes'));
+    console.log('✅ Vehicle return routes loaded');
+} catch (error) {
+    console.error('❌ Vehicle return routes failed:', error.message);
+}
+
+try {
+    app.use('/api/wallet', require('./routes/walletRoutes'));
+    console.log('✅ Wallet routes loaded');
+} catch (error) {
+    console.error('❌ Wallet routes failed:', error.message);
 }
 
 console.log('✅ Route loading completed');

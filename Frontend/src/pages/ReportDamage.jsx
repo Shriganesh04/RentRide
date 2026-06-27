@@ -9,8 +9,7 @@ import {
   AlertCircle,
   CheckCircle,
   Loader,
-  ArrowLeft,
-  Image as ImageIcon
+  ArrowLeft
 } from 'lucide-react';
 import axios from 'axios';
 import DashboardNavbar from '../components/layout/DashboardNavbar';
@@ -23,8 +22,6 @@ const ReportDamage = () => {
   const [images, setImages] = useState([]);
   const [description, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
-  const [analyzing, setAnalyzing] = useState(false);
-  const [aiAnalysis, setAiAnalysis] = useState(null);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
 
@@ -59,44 +56,6 @@ const ReportDamage = () => {
     setImages(prev => prev.filter(img => img.id !== id));
   };
 
-  const analyzeWithAI = async () => {
-    if (images.length === 0) {
-      setError('Please upload at least one image');
-      return;
-    }
-
-    try {
-      setAnalyzing(true);
-      setError('');
-
-      const formData = new FormData();
-      images.forEach(img => {
-        formData.append('images', img.file);
-      });
-
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/damages/analyze-ai`,
-        formData,
-        {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
-            'Content-Type': 'multipart/form-data'
-          },
-          withCredentials: true
-        }
-      );
-
-      if (response.data.success) {
-        setAiAnalysis(response.data.data);
-      }
-    } catch (err) {
-      console.error('AI Analysis error:', err);
-      setError('Failed to analyze images. Please try again.');
-    } finally {
-      setAnalyzing(false);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -117,10 +76,6 @@ const ReportDamage = () => {
       const formData = new FormData();
       formData.append('bookingId', bookingId);
       formData.append('description', description);
-      
-      if (aiAnalysis) {
-        formData.append('aiAnalysis', JSON.stringify(aiAnalysis));
-      }
 
       images.forEach(img => {
         formData.append('images', img.file);
@@ -180,7 +135,7 @@ const ReportDamage = () => {
               Report Vehicle Damage
             </h1>
             <p style={{ color: theme.textSecondary }}>
-              Upload photos and describe the damage. Our AI will help assess the situation.
+              Upload photos and describe the damage. Our team will review and get back to you.
             </p>
           </motion.div>
 
@@ -261,79 +216,7 @@ const ReportDamage = () => {
                 <p className="text-xs" style={{ color: theme.textSecondary }}>
                   Upload up to 5 photos. Supported formats: JPG, PNG. Max size: 5MB per image.
                 </p>
-
-                {images.length > 0 && !aiAnalysis && (
-                  <button
-                    type="button"
-                    onClick={analyzeWithAI}
-                    disabled={analyzing}
-                    className="mt-4 px-6 py-3 rounded-xl bg-blue-500 text-white font-bold hover:bg-blue-600 transition-colors disabled:opacity-50 flex items-center gap-2"
-                  >
-                    {analyzing ? (
-                      <>
-                        <Loader className="w-5 h-5 animate-spin" />
-                        Analyzing with AI...
-                      </>
-                    ) : (
-                      <>
-                        <ImageIcon className="w-5 h-5" />
-                        Analyze with AI
-                      </>
-                    )}
-                  </button>
-                )}
               </motion.div>
-
-              {/* AI Analysis Results */}
-              {aiAnalysis && (
-                <motion.div
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="rounded-2xl border p-6 mb-6 bg-blue-500/5"
-                  style={{
-                    borderColor: 'rgba(59, 130, 246, 0.3)'
-                  }}
-                >
-                  <h3 className="text-lg font-bold mb-3 flex items-center gap-2 text-blue-600">
-                    <CheckCircle className="w-5 h-5" />
-                    AI Analysis Complete
-                  </h3>
-                  <div className="space-y-2">
-                    <div>
-                      <span className="text-sm font-bold" style={{ color: theme.textSecondary }}>
-                        Damage Type:
-                      </span>
-                      <p className="font-semibold" style={{ color: theme.text }}>
-                        {aiAnalysis.damageType}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold" style={{ color: theme.textSecondary }}>
-                        Severity:
-                      </span>
-                      <p className="font-semibold" style={{ color: theme.text }}>
-                        {aiAnalysis.severity}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold" style={{ color: theme.textSecondary }}>
-                        Estimated Cost:
-                      </span>
-                      <p className="font-semibold text-green-500">
-                        ₹{aiAnalysis.estimatedCost?.toLocaleString()}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold" style={{ color: theme.textSecondary }}>
-                        Description:
-                      </span>
-                      <p className="text-sm mt-1" style={{ color: theme.text }}>
-                        {aiAnalysis.description}
-                      </p>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
 
               {/* Description */}
               <motion.div
