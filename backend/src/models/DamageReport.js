@@ -1,40 +1,52 @@
-const express = require('express');
-const router = express.Router();
-const {
-  getAllDamageReports,
-  getDamageReportById,
-  createDamageReport,
-  updateDamageReport,
-  deleteDamageReport,
-  getCarDamageStats,
-  // Admin functions
-  getPendingDamageReports,
-  approveDamageReport,
-  rejectDamageReport,
-  setUnderReview,
-  getUserDamageReports,
-  getAdminDamageStats
-} = require('../controllers/damageReportController');
+const mongoose = require('mongoose');
 
-const { protect, authorize } = require('../middleware/authMiddleware');
-const upload = require('../middleware/upload');
+const damageReportSchema = new mongoose.Schema({
+  booking: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Booking',
+    required: true
+  },
+  user: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    required: true
+  },
+  car: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Car',
+    required: true
+  },
+  description: {
+    type: String,
+    required: [true, 'Please provide a description of the damage'],
+    trim: true
+  },
+  images: [{ type: String }],
 
-// Public/User routes
-router.post('/', protect, upload.array('images', 5), createDamageReport);
-router.get('/user/my-reports', protect, getUserDamageReports);
+  status: {
+    type: String,
+    enum: ['pending', 'under_review', 'approved', 'rejected', 'resolved'],
+    default: 'pending'
+  },
 
-// Admin routes
-router.get('/admin/pending', protect, authorize('admin'), getPendingDamageReports);
-router.get('/admin/stats', protect, authorize('admin'), getAdminDamageStats);
-router.put('/:id/approve', protect, authorize('admin'), approveDamageReport);
-router.put('/:id/reject', protect, authorize('admin'), rejectDamageReport);
-router.put('/:id/review', protect, authorize('admin'), setUnderReview);
+  estimatedCost: { type: Number, default: 0, min: 0 },
+  actualCost: { type: Number, default: null, min: 0 },
 
-// General routes
-router.get('/', protect, getAllDamageReports);
-router.get('/:id', protect, getDamageReportById);
-router.put('/:id', protect, authorize('admin'), updateDamageReport);
-router.delete('/:id', protect, authorize('admin'), deleteDamageReport);
-router.get('/car/:carId/stats', protect, getCarDamageStats);
+  paymentStatus: {
+    type: String,
+    enum: ['pending', 'paid'],
+    default: 'pending'
+  },
+  paymentId: { type: String, default: null },
 
-module.exports = router;
+  adminNotes: { type: String, trim: true, default: '' },
+  reviewedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null
+  },
+  reviewedAt: { type: Date, default: null }
+
+}, { timestamps: true });
+
+module.exports = mongoose.model('DamageReport', damageReportSchema);

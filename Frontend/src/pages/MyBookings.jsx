@@ -15,8 +15,15 @@ import {
 import { bookingService } from '../services/bookingService';
 import { paymentService } from '../services/paymentService';
 import damageService from '../services/damageService';
+import { returnService } from '../services/returnService';
+import { walletService } from '../services/walletService';
 import { loadRazorpayScript, initRazorpayPayment } from '../utils/razorpay';
 import DashboardNavbar from '../components/layout/DashboardNavbar';
+
+// Mirrors backend FINE_RATE_PER_DAY in vehicleReturnController.js — used only
+// to show the user a live preview before they submit; the server recomputes
+// and stores the authoritative figure.
+const FINE_RATE_PER_DAY = 1.5;
 
 
 const container = {
@@ -36,9 +43,16 @@ const MyBookings = () => {
 
   const [bookings, setBookings] = useState([]);
   const [damageReports, setDamageReports] = useState([]);
+  const [returnRequests, setReturnRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [successData, setSuccessData] = useState(null);
+
+  // Vehicle return modal state
+  const [returnTarget, setReturnTarget] = useState(null); // the booking being returned
+  const [returnNotes, setReturnNotes] = useState('');
+  const [submittingReturn, setSubmittingReturn] = useState(false);
+  const [payingFineId, setPayingFineId] = useState(null);
 
   const theme = {
     bg: isDarkMode ? '#0f172a' : '#f8f9fa',
@@ -64,29 +78,47 @@ const MyBookings = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [bookingsRes, damagesRes] = await Promise.all([
+      const [bookingsRes, damagesRes, returnsRes] = await Promise.allSettled([
         bookingService.getUserBookings(),
-        damageService.getUserDamageReports()
+        damageService.getUserDamageReports(),
+        returnService.getMyReturnRequests()
       ]);
 
-      setDamageReports(damagesRes.data || []);
+      if (damagesRes.status === 'fulfilled') {
+        setDamageReports(damagesRes.value.data || []);
+      } else {
+        console.error('Failed to fetch damage reports:', damagesRes.reason);
+        setDamageReports([]);
+      }
 
-      const mappedBookings = (bookingsRes.data || [])
-        .filter(b => b.status !== 'cancelled')
-        .map(b => ({
-          id: b._id,
-          carId: b.car?._id || b.car,
-          carName: b.car ? `${b.car.brand} ${b.car.model}` : 'Unknown Car',
-          status: b.status.charAt(0).toUpperCase() + b.status.slice(1),
-          paymentStatus: b.paymentStatus.charAt(0).toUpperCase() + b.paymentStatus.slice(1),
-          pickup: b.car?.location || 'Store Location',
-          dropoff: 'Store Location',
-          start: new Date(b.startDate).toLocaleDateString() + ' ' + new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          end: new Date(b.endDate).toLocaleDateString() + ' ' + new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          total: b.totalPrice
-        }));
+      if (returnsRes.status === 'fulfilled') {
+        setReturnRequests(returnsRes.value.data || []);
+      } else {
+        console.error('Failed to fetch return requests:', returnsRes.reason);
+        setReturnRequests([]);
+      }
 
-      setBookings(mappedBookings);
+      if (bookingsRes.status === 'fulfilled') {
+        const mappedBookings = (bookingsRes.value.data || [])
+          .filter(b => b.status !== 'cancelled')
+          .map(b => ({
+            id: b._id,
+            carId: b.car?._id || b.car,
+            carName: b.car ? `${b.car.brand} ${b.car.model}` : 'Unknown Car',
+            status: b.status.charAt(0).toUpperCase() + b.status.slice(1),
+            paymentStatus: b.paymentStatus.charAt(0).toUpperCase() + b.paymentStatus.slice(1),
+            pickup: b.car?.location || 'Store Location',
+            dropoff: 'Store Location',
+            start: new Date(b.startDate).toLocaleDateString() + ' ' + new Date(b.startDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            end: new Date(b.endDate).toLocaleDateString() + ' ' + new Date(b.endDate).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            endDateRaw: b.endDate,
+            pricePerDay: b.car?.pricePerDay || 0,
+            total: b.totalPrice
+          }));
+        setBookings(mappedBookings);
+      } else {
+        console.error('Failed to fetch bookings:', bookingsRes.reason);
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error);
       // alert('Failed to load data. Please try again.');
@@ -236,11 +268,54 @@ const MyBookings = () => {
     try {
       await bookingService.cancelBooking(bookingId);
       alert('Booking cancelled successfully');
-      alert('Booking cancelled successfully');
       fetchData();
     } catch (error) {
       console.error('Failed to cancel booking:', error);
       alert('Failed to cancel booking. Please try again.');
+    }
+  };
+
+  // Live client-side preview of late days / fine — purely informational.
+  // The backend recomputes this from server time when the request is submitted,
+  // so this is just to set expectations before the user confirms.
+  const previewLateFine = (booking) => {
+    const scheduledEnd = new Date(booking.endDateRaw);
+    const now = new Date();
+    const lateMs = now - scheduledEnd;
+    const lateDays = lateMs > 0 ? Math.ceil(lateMs / (1000 * 60 * 60 * 24)) : 0;
+    const fineAmount = Math.round(lateDays * (booking.pricePerDay || 0) * FINE_RATE_PER_DAY);
+    return { lateDays, fineAmount };
+  };
+
+  const handleSubmitReturn = async () => {
+    if (!returnTarget) return;
+    setSubmittingReturn(true);
+    try {
+      await returnService.submitReturnRequest(returnTarget.id, returnNotes);
+      setReturnTarget(null);
+      setReturnNotes('');
+      fetchData();
+    } catch (error) {
+      console.error('Failed to submit return request:', error);
+      alert(error.response?.data?.message || 'Failed to submit return request. Please try again.');
+    } finally {
+      setSubmittingReturn(false);
+    }
+  };
+
+  const handlePayOutstandingFine = async (vehicleReturnId) => {
+    setPayingFineId(vehicleReturnId);
+    try {
+      const res = await walletService.payFineFromWallet(vehicleReturnId);
+      if (res.success) {
+        alert('Fine paid successfully from your wallet balance.');
+        fetchData();
+      }
+    } catch (error) {
+      console.error('Failed to pay fine:', error);
+      alert(error.response?.data?.message || 'Failed to pay fine. Check your wallet balance.');
+    } finally {
+      setPayingFineId(null);
     }
   };
 
@@ -260,6 +335,15 @@ const MyBookings = () => {
       case 'Pending': return 'px-2 py-1 rounded-lg bg-orange-500/10 text-orange-600 text-xs font-bold';
       case 'Failed': return 'px-2 py-1 rounded-lg bg-red-500/10 text-red-600 text-xs font-bold';
       default: return 'px-2 py-1 rounded-lg bg-gray-500/10 text-gray-600 text-xs font-bold';
+    }
+  };
+
+  const returnStatusBadge = (status) => {
+    switch (status) {
+      case 'pending': return 'px-3 py-1 rounded-full bg-yellow-100 text-yellow-700 text-xs font-bold border border-yellow-200';
+      case 'approved': return 'px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-bold border border-blue-200';
+      case 'rejected': return 'px-3 py-1 rounded-full bg-red-100 text-red-700 text-xs font-bold border border-red-200';
+      default: return 'px-3 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-bold border border-gray-200';
     }
   };
 
@@ -347,6 +431,15 @@ const MyBookings = () => {
               const damageReport = damageReports.find(d => d.booking?._id === b.id || d.booking === b.id);
               const hasUnpaidDamage = damageReport && damageReport.status === 'approved' && damageReport.paymentStatus !== 'paid';
               const hasPaidDamage = damageReport && damageReport.paymentStatus === 'paid';
+
+              // Most recent return request for this booking, if any (a rejected
+              // one doesn't block a fresh attempt, so prefer a pending/approved
+              // one over an older rejected one when several exist).
+              const bookingReturns = returnRequests.filter(r => (r.booking?._id || r.booking) === b.id);
+              const returnReq = bookingReturns.find(r => r.status === 'pending')
+                || bookingReturns.find(r => r.status === 'approved')
+                || bookingReturns[0];
+              const canRequestReturn = b.status === 'Confirmed' && (!returnReq || returnReq.status === 'rejected');
 
               return (
                 <motion.div
@@ -472,6 +565,38 @@ const MyBookings = () => {
                         </button>
                       )}
 
+                      {/* Return Vehicle — only while the booking is confirmed/active */}
+                      {canRequestReturn && (
+                        <button
+                          onClick={() => setReturnTarget(b)}
+                          className="px-4 py-2 rounded-xl bg-blue-50 text-blue-600 font-bold hover:bg-blue-100 transition text-sm border border-blue-200"
+                        >
+                          Return Vehicle
+                        </button>
+                      )}
+
+                      {/* Return request status, once one exists */}
+                      {returnReq && (
+                        <span className={returnStatusBadge(returnReq.status)}>
+                          Return {returnReq.status === 'pending' ? 'Pending Review'
+                            : returnReq.status.charAt(0).toUpperCase() + returnReq.status.slice(1)}
+                        </span>
+                      )}
+
+                      {/* Outstanding fine after admin settlement — pay from wallet */}
+                      {returnReq?.status === 'approved' && returnReq.outstandingFine > 0 && (
+                        <button
+                          onClick={() => handlePayOutstandingFine(returnReq._id)}
+                          disabled={payingFineId === returnReq._id}
+                          className="px-4 py-2 rounded-xl bg-red-600 text-white font-black hover:bg-red-700 transition text-sm flex items-center gap-1"
+                        >
+                          <AlertTriangle className="w-4 h-4" />
+                          {payingFineId === returnReq._id
+                            ? 'Paying…'
+                            : `Pay Fine (₹${returnReq.outstandingFine.toLocaleString()})`}
+                        </button>
+                      )}
+
 
 
                       {/* Show Report Damage button if Paid and no existing report */}
@@ -503,6 +628,56 @@ const MyBookings = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Settlement breakdown once an admin has approved the return */}
+                  {returnReq?.status === 'approved' && (
+                    <div
+                      className="mt-4 rounded-xl border p-4 text-sm space-y-1"
+                      style={{ backgroundColor: theme.inputBg, borderColor: theme.border }}
+                    >
+                      <p className="font-bold mb-2" style={{ color: theme.text }}>Return Settlement</p>
+                      {returnReq.lateDays > 0 && (
+                        <div className="flex justify-between" style={{ color: theme.textSecondary }}>
+                          <span>Late by {returnReq.lateDays} day(s)</span>
+                          <span>₹{(returnReq.adminFineOverride ?? returnReq.lateFineAmount)?.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {returnReq.damageCost > 0 && (
+                        <div className="flex justify-between" style={{ color: theme.textSecondary }}>
+                          <span>Damage cost</span>
+                          <span>₹{returnReq.damageCost.toLocaleString()}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between font-bold" style={{ color: theme.text }}>
+                        <span>Total fine</span>
+                        <span>₹{returnReq.totalFine?.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between" style={{ color: theme.textSecondary }}>
+                        <span>Deducted from deposit (₹{returnReq.depositAmount?.toLocaleString()})</span>
+                        <span>-₹{returnReq.amountDeductedFromDeposit?.toLocaleString()}</span>
+                      </div>
+                      {returnReq.amountRefundedToWallet > 0 && (
+                        <div className="flex justify-between text-green-500 font-bold">
+                          <span>Refunded to wallet</span>
+                          <span>₹{returnReq.amountRefundedToWallet.toLocaleString()}</span>
+                        </div>
+                      )}
+                      {returnReq.outstandingFine > 0 && (
+                        <div className="flex justify-between text-red-500 font-bold">
+                          <span>Outstanding (not yet paid)</span>
+                          <span>₹{returnReq.outstandingFine.toLocaleString()}</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {returnReq?.status === 'rejected' && returnReq.adminNotes && (
+                    <div
+                      className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 text-xs text-red-600 font-semibold"
+                    >
+                      Return request rejected: {returnReq.adminNotes}
+                    </div>
+                  )}
                 </motion.div>
               );
             })}
@@ -596,6 +771,96 @@ const MyBookings = () => {
                   className="w-full px-6 py-4 rounded-2xl bg-green-500 text-white font-black hover:bg-green-600 transition"
                 >
                   Done
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Return Vehicle Modal */}
+      <AnimatePresence>
+        {returnTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            onClick={() => !submittingReturn && setReturnTarget(null)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="rounded-3xl border p-8 max-w-md w-full shadow-2xl"
+              style={{ backgroundColor: theme.cardBg, borderColor: theme.border }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-2xl font-black" style={{ color: theme.text }}>
+                  Return Vehicle
+                </h2>
+                <button
+                  onClick={() => !submittingReturn && setReturnTarget(null)}
+                  className="p-2 rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+                >
+                  <X className="w-5 h-5" style={{ color: theme.textSecondary }} />
+                </button>
+              </div>
+
+              <p className="text-sm mb-4" style={{ color: theme.textSecondary }}>
+                {returnTarget.carName} — scheduled drop-off: {returnTarget.end}
+              </p>
+
+              {(() => {
+                const { lateDays, fineAmount } = previewLateFine(returnTarget);
+                return lateDays > 0 ? (
+                  <div className="rounded-xl border border-red-200 bg-red-50 p-4 mb-4">
+                    <div className="flex items-center gap-2 text-red-600 font-bold text-sm mb-1">
+                      <AlertTriangle className="w-4 h-4" />
+                      Late by {lateDays} day{lateDays > 1 ? 's' : ''}
+                    </div>
+                    <p className="text-xs text-red-500">
+                      Estimated late fine: <span className="font-black">₹{fineAmount.toLocaleString()}</span>
+                      {' '}(charged against your deposit; the admin confirms the final amount on review)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-green-200 bg-green-50 p-4 mb-4">
+                    <div className="flex items-center gap-2 text-green-600 font-bold text-sm">
+                      <CheckCircle className="w-4 h-4" />
+                      On time — no late fine
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5 block">
+                Notes (optional)
+              </label>
+              <textarea
+                value={returnNotes}
+                onChange={(e) => setReturnNotes(e.target.value)}
+                placeholder="Anything the admin should know about this return…"
+                rows={3}
+                className="w-full p-3.5 bg-gray-50 border border-transparent focus:bg-white focus:border-blue-300 focus:ring-4 focus:ring-blue-50 rounded-xl font-medium text-gray-800 transition-all outline-none text-sm mb-5 resize-none"
+              />
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setReturnTarget(null)}
+                  disabled={submittingReturn}
+                  className="flex-1 px-6 py-3 rounded-xl border font-bold transition"
+                  style={{ borderColor: theme.border, color: theme.text }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleSubmitReturn}
+                  disabled={submittingReturn}
+                  className="flex-1 px-6 py-3 rounded-xl bg-blue-600 text-white font-black hover:bg-blue-700 transition disabled:opacity-60"
+                >
+                  {submittingReturn ? 'Submitting…' : 'Confirm Return'}
                 </button>
               </div>
             </motion.div>

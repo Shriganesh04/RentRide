@@ -126,6 +126,9 @@ exports.getCarById = async (req, res) => {
 exports.createCar = async (req, res) => {
   try {
     const body = coerceNumerics(req.body);
+    // lastServicedAt is a Date field — an empty string from the form
+    // fails Mongoose's cast, so normalize it to null like the numerics above.
+    if (body.lastServicedAt === '') body.lastServicedAt = null;
     const car  = await Car.create(body);
     res.status(201).json({ success: true, message: 'Car created successfully', data: car });
   } catch (error) {
@@ -146,6 +149,7 @@ exports.updateCar = async (req, res) => {
 
     // 2. Coerce numerics
     const update = coerceNumerics(raw);
+    if (update.lastServicedAt === '') update.lastServicedAt = null;
 
     const car = await Car.findByIdAndUpdate(
       req.params.id,
