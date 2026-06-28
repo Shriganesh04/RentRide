@@ -42,6 +42,7 @@ export default function App() {
     "/dashboard",
     "/browsecars",
     "/mybookings",
+    "/my-wallet",
     "/payment",
     "/offers",
     "/booking-confirmation",

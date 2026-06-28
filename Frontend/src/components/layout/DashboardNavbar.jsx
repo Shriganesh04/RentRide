@@ -137,7 +137,7 @@ const DashboardNavbar = () => {
     { label: "Dashboard", path: "/dashboard" },
     { label: "Browse Cars", path: "/browsecars" },
     { label: "My Bookings", path: "/mybookings" },
-    { label: "Payment", path: "/payment" },
+    { label: "My Wallet", path: "/my-wallet" },
     { label: "Offers", path: "/offers" },
   ];
 

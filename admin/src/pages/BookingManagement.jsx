@@ -277,15 +277,6 @@ const BookingManagement = () => {
                       </td>
                       <td className="p-6">
                         <div className="flex justify-end gap-2">
-                          {booking.status !== 'completed' && booking.status !== 'cancelled' && (
-                            <button 
-                              onClick={() => updateStatus(booking._id, 'completed')} 
-                              className="p-2.5 text-green-600 hover:bg-green-50 rounded-xl transition-all border border-transparent hover:border-green-200 active:scale-90"
-                              title="Mark as Completed"
-                            >
-                              <CheckCircle size={20} />
-                            </button>
-                          )}
                           {booking.status !== 'cancelled' && booking.paymentStatus !== 'paid' && (
                             <button 
                               onClick={() => updateStatus(booking._id, 'cancelled')} 
@@ -294,6 +285,11 @@ const BookingManagement = () => {
                             >
                               <XCircle size={20} />
                             </button>
+                          )}
+                          {booking.status === 'confirmed' && (
+                            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-2 py-1">
+                              Use Vehicle Returns to complete
+                            </span>
                           )}
                         </div>
                       </td>

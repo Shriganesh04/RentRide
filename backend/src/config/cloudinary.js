@@ -1,34 +1,74 @@
-const cloudinary = require('cloudinary').v2;
+const cloudinary = require("cloudinary").v2;
+
+// Verify environment variables
+console.log("Cloudinary Config:");
+console.log({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret_exists: !!process.env.CLOUDINARY_API_SECRET,
+});
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key:    process.env.CLOUDINARY_API_KEY,
+  api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 /**
  * Upload a single file buffer to Cloudinary.
  * @param {Buffer} buffer - file buffer from multer memoryStorage
- * @param {String} folder - cloudinary folder, e.g. 'rentride/cars'
+ * @param {String} folder - cloudinary folder
  * @returns {Promise<{url: string, publicId: string}>}
  */
-const uploadBufferToCloudinary = (buffer, folder = 'rentride/cars') => {
+const uploadBufferToCloudinary = (buffer, folder = "rentride/cars") => {
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(
       {
         folder,
-        resource_type: 'image',
+        resource_type: "image",
         transformation: [
-          { width: 1600, height: 1200, crop: 'limit' },  // cap max size
-          { quality: 'auto:good' },
-          { fetch_format: 'auto' },
+          { width: 1600, height: 1200, crop: "limit" },
+          { quality: "auto:good" },
+          { fetch_format: "auto" },
         ],
       },
       (error, result) => {
-        if (error) return reject(error);
-        resolve({ url: result.secure_url, publicId: result.public_id });
+        if (error) {
+          console.error("\n========== CLOUDINARY UPLOAD ERROR ==========");
+          console.error("Full Error Object:");
+          console.dir(error, { depth: null });
+
+          console.error("\nError Details:");
+          console.error("Name:", error.name);
+          console.error("Message:", error.message);
+          console.error("HTTP Code:", error.http_code);
+          console.error("Status Code:", error.statusCode);
+          console.error("Error:", error.error);
+          console.error("Response:", error.response);
+
+          if (error.response?.body) {
+            console.error("Response Body:");
+            console.dir(error.response.body, { depth: null });
+          }
+
+          console.error("=============================================\n");
+
+          return reject(error);
+        }
+
+        resolve({
+          url: result.secure_url,
+          publicId: result.public_id,
+        });
       }
     );
+
+    stream.on("error", (err) => {
+      console.error("Cloudinary Stream Error:");
+      console.dir(err, { depth: null });
+      reject(err);
+    });
+
     stream.end(buffer);
   });
 };
@@ -38,21 +78,23 @@ const uploadBufferToCloudinary = (buffer, folder = 'rentride/cars') => {
  */
 const deleteFromCloudinary = async (publicId) => {
   if (!publicId) return;
+
   try {
-    await cloudinary.uploader.destroy(publicId);
+    const result = await cloudinary.uploader.destroy(publicId);
+    console.log("Cloudinary Delete Result:", result);
   } catch (err) {
-    console.error('Cloudinary delete failed:', err.message);
+    console.error("\n========== CLOUDINARY DELETE ERROR ==========");
+    console.dir(err, { depth: null });
+    console.error("=============================================\n");
   }
 };
 
 /**
- * Extract the Cloudinary public ID from a secure_url, so we can delete
- * old images that were stored without us tracking publicId separately.
- * e.g. https://res.cloudinary.com/demo/image/upload/v123/rentride/cars/abc123.jpg
- *   -> rentride/cars/abc123
+ * Extract Cloudinary public ID from URL.
  */
 const extractPublicId = (url) => {
-  if (!url || !url.includes('res.cloudinary.com')) return null;
+  if (!url || !url.includes("res.cloudinary.com")) return null;
+
   const match = url.match(/\/upload\/(?:v\d+\/)?(.+)\.\w+$/);
   return match ? match[1] : null;
 };

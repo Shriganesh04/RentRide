@@ -496,7 +496,14 @@ const VehicleManagement = () => {
               </div>
 
               {/* Tab content */}
-              <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden">
+              <form onSubmit={handleSubmit} onKeyDown={e => {
+                  // Pressing Enter in any plain text input would otherwise submit
+                  // the form immediately — even on tab 1 with no images uploaded yet.
+                  // Only allow Enter to submit when focus is on the actual submit button.
+                  if (e.key === 'Enter' && e.target.tagName !== 'TEXTAREA' && e.target.type !== 'submit') {
+                    e.preventDefault();
+                  }
+                }} className="flex flex-col flex-1 overflow-hidden">
                 <div className="flex-1 overflow-y-auto px-8 py-6 space-y-5">
 
                   {/* ── BASICS ── */}
