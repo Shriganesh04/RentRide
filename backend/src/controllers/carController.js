@@ -45,8 +45,8 @@ function coerceNumerics(body) {
 exports.getAllCars = async (req, res) => {
   try {
     const {
-      category, fuelType, transmission, location,
-      minPrice, maxPrice, minSeats, available,
+      category, fuelType, transmission, location, brand,
+      minPrice, maxPrice, minSeats, available, features,
       search, sortBy = 'createdAt', order = 'desc',
       page = 1, limit = 12
     } = req.query;
@@ -57,7 +57,22 @@ exports.getAllCars = async (req, res) => {
     if (fuelType)    filter.fuelType     = fuelType;
     if (transmission) filter.transmission = transmission;
     if (location)    filter.location     = new RegExp(location, 'i');
+    if (brand)       filter.brand        = new RegExp(`^${brand}$`, 'i');
     if (minSeats)    filter.seats        = { $gte: Number(minSeats) };
+
+    // features: comma-separated list, e.g. ?features=Sunroof,ABS
+    // Car must have ALL listed features across any of its 4 feature arrays.
+    if (features) {
+      const list = features.split(',').map(f => f.trim()).filter(Boolean);
+      if (list.length > 0) {
+        filter.$and = list.map(f => ({
+          $or: [
+            { features: f }, { safetyFeatures: f },
+            { comfortFeatures: f }, { entertainmentFeatures: f }
+          ]
+        }));
+      }
+    }
 
     if (available !== undefined) filter.available = available === 'true';
 

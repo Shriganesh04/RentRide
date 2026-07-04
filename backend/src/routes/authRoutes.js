@@ -5,6 +5,8 @@ const {
     getMe,
     updateProfile,
     updatePassword,
+    forgotPassword,
+    resetPassword,
     logout,
     deleteAccount,
     firebaseRegister,
@@ -19,6 +21,8 @@ const router = express.Router();
 // Traditional auth routes
 router.post('/register', register);
 router.post('/login', login);
+router.post('/forgot-password', forgotPassword);
+router.put('/reset-password/:resetToken', resetPassword);
 
 // Firebase auth routes
 router.post('/firebase-register', firebaseRegister);

@@ -191,6 +191,15 @@ export default function SignIn() {
                 {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
               </button>
             </div>
+            <div className="text-right mt-1.5">
+              <Link
+                to="/forgot-password"
+                className="text-sm font-semibold hover:underline"
+                style={{ color: theme.primary }}
+              >
+                Forgot Password?
+              </Link>
+            </div>
           </div>
 
           <button

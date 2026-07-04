@@ -14,6 +14,8 @@ import Dashboard from "./pages/AppDashboard";
 import Aboutx from "./pages/Aboutx";
 import SignIn from "./components/auth/SignIn";
 import SignUp from "./components/auth/SignUp";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import BookingConfirmation from "./pages/BookingConfirmation";
 import PaymentSuccess from "./pages/PaymentSuccess";
@@ -116,6 +118,8 @@ export default function App() {
             path="/signup"
             element={isLoggedIn ? <Navigate to="/dashboard" replace /> : <SignUp />}
           />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:resetToken" element={<ResetPassword />} />
 
           {/* Semi-Public Routes */}
           <Route path="/browsecars" element={<BrowseCars />} />

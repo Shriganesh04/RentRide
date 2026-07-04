@@ -77,6 +77,21 @@ const ContentArea = () => {
   const [totalPages, setTotalPages] = useState(1)
   const [totalCount, setTotalCount] = useState(0)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [creating, setCreating] = useState(false)
+  const [formError, setFormError] = useState('')
+  const [formData, setFormData] = useState({
+    code: '',
+    name: '',
+    description: '',
+    type: 'percentage',
+    value: '',
+    minBookingAmount: '',
+    maxDiscount: '',
+    validFrom: '',
+    validTo: '',
+    usageLimit: '',
+    active: true
+  })
   const [stats, setStats] = useState({
     totalPromotions: 0,
     activePromotions: 0,
@@ -116,7 +131,7 @@ const ContentArea = () => {
         const totalUsage = response.data.data?.reduce((sum, promo) => sum + (promo.usedCount || 0), 0) || 0
         const activeCount = response.data.data?.filter(p => {
           const now = new Date()
-          return p.active && new Date(p.validFrom) <= now && new Date(p.validUntil) >= now
+          return p.active && new Date(p.validFrom) <= now && new Date(p.validTo) >= now
         }).length || 0
 
         setStats({
@@ -131,6 +146,81 @@ const ContentArea = () => {
       alert('Failed to fetch promotions. Please check your connection.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      code: '',
+      name: '',
+      description: '',
+      type: 'percentage',
+      value: '',
+      minBookingAmount: '',
+      maxDiscount: '',
+      validFrom: '',
+      validTo: '',
+      usageLimit: '',
+      active: true
+    })
+    setFormError('')
+  }
+
+  const handleFormChange = (field, val) => {
+    setFormData(prev => ({ ...prev, [field]: val }))
+  }
+
+  const handleCloseModal = () => {
+    setShowCreateModal(false)
+    resetForm()
+  }
+
+  const handleCreatePromotion = async (e) => {
+    e.preventDefault()
+    setFormError('')
+
+    if (!formData.code || !formData.name || !formData.description || !formData.value ||
+        !formData.validFrom || !formData.validTo || !formData.usageLimit) {
+      setFormError('Please fill in all required fields.')
+      return
+    }
+
+    if (new Date(formData.validTo) <= new Date(formData.validFrom)) {
+      setFormError('Valid To date must be after Valid From date.')
+      return
+    }
+
+    try {
+      setCreating(true)
+
+      const payload = {
+        code: formData.code.trim().toUpperCase(),
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        type: formData.type,
+        value: Number(formData.value),
+        minBookingAmount: formData.minBookingAmount ? Number(formData.minBookingAmount) : 0,
+        maxDiscount: formData.maxDiscount ? Number(formData.maxDiscount) : null,
+        validFrom: new Date(formData.validFrom).toISOString(),
+        validTo: new Date(formData.validTo).toISOString(),
+        usageLimit: Number(formData.usageLimit),
+        active: formData.active
+      }
+
+      const response = await axios.post(`${API_URL}/admin/promotions`, payload, {
+        headers: getAuthHeader()
+      })
+
+      if (response.data.success) {
+        handleCloseModal()
+        setPage(1)
+        fetchPromotions()
+      }
+    } catch (error) {
+      console.error('Error creating promotion:', error)
+      setFormError(error.response?.data?.message || 'Failed to create promotion. Please try again.')
+    } finally {
+      setCreating(false)
     }
   }
 
@@ -171,7 +261,7 @@ const ContentArea = () => {
   const getStatusBadge = (promo) => {
     const now = new Date()
     const validFrom = new Date(promo.validFrom)
-    const validUntil = new Date(promo.validUntil)
+    const validUntil = new Date(promo.validTo)
 
     if (!promo.active) {
       return { text: 'Inactive', color: 'bg-gray-50 text-gray-600 border-gray-200' }
@@ -376,7 +466,7 @@ const ContentArea = () => {
                             </div>
                             <div className="flex items-center gap-2 text-xs font-bold text-text-secondary">
                               <Calendar size={12} className="text-red-600" />
-                              {formatDate(promo.validUntil)}
+                              {formatDate(promo.validTo)}
                             </div>
                           </div>
                         </td>
@@ -386,7 +476,7 @@ const ContentArea = () => {
                               {promo.usedCount || 0}
                             </p>
                             <p className="text-[10px] text-text-secondary font-bold opacity-60">
-                              {promo.maxUses ? `/ ${promo.maxUses} max` : 'Unlimited'}
+                              {promo.usageLimit ? `/ ${promo.usageLimit} max` : 'Unlimited'}
                             </p>
                           </div>
                         </td>
@@ -462,6 +552,226 @@ const ContentArea = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* Create Promotion Modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={handleCloseModal}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-2xl max-h-[90vh] overflow-y-auto rounded-[32px] bg-white shadow-2xl"
+            >
+              <form onSubmit={handleCreatePromotion}>
+                {/* Modal Header */}
+                <div className="flex items-center justify-between p-8 border-b border-border-light">
+                  <div>
+                    <h3 className="text-2xl font-black text-text-primary tracking-tight uppercase">
+                      Create <span className="text-primary italic">Promo</span>
+                    </h3>
+                    <p className="text-text-secondary text-sm font-medium mt-1">
+                      Set up a new discount code for customers.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-red-50 hover:text-red-500 transition-all"
+                  >
+                    <X size={18} />
+                  </button>
+                </div>
+
+                {/* Modal Body */}
+                <div className="p-8 space-y-5">
+                  {formError && (
+                    <div className="rounded-2xl bg-red-50 border border-red-200 text-red-600 text-sm font-bold px-5 py-3">
+                      {formError}
+                    </div>
+                  )}
+
+                  <div className="grid grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">
+                        Promo Code *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.code}
+                        onChange={(e) => handleFormChange('code', e.target.value)}
+                        placeholder="SUMMER25"
+                        className="w-full h-12 rounded-xl border border-border-light px-4 text-sm font-bold uppercase focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">
+                        Name *
+                      </label>
+                      <input
+                        type="text"
+                        value={formData.name}
+                        onChange={(e) => handleFormChange('name', e.target.value)}
+                        placeholder="Summer Sale"
+                        className="w-full h-12 rounded-xl border border-border-light px-4 text-sm font-bold focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">
+                      Description *
+                    </label>
+                    <textarea
+                      value={formData.description}
+                      onChange={(e) => handleFormChange('description', e.target.value)}
+                      placeholder="Get 25% off on all bookings this summer"
+                      rows={2}
+                      className="w-full rounded-xl border border-border-light px-4 py-3 text-sm font-bold focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5 resize-none"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">
+                        Discount Type *
+                      </label>
+                      <select
+                        value={formData.type}
+                        onChange={(e) => handleFormChange('type', e.target.value)}
+                        className="w-full h-12 rounded-xl border border-border-light px-4 text-sm font-bold focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5"
+                      >
+                        <option value="percentage">Percentage (%)</option>
+                        <option value="fixed">Fixed Amount (₹)</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">
+                        Value *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.value}
+                        onChange={(e) => handleFormChange('value', e.target.value)}
+                        placeholder={formData.type === 'percentage' ? '25' : '500'}
+                        className="w-full h-12 rounded-xl border border-border-light px-4 text-sm font-bold focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">
+                        Min Booking Amount
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.minBookingAmount}
+                        onChange={(e) => handleFormChange('minBookingAmount', e.target.value)}
+                        placeholder="0"
+                        className="w-full h-12 rounded-xl border border-border-light px-4 text-sm font-bold focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">
+                        Max Discount Cap
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={formData.maxDiscount}
+                        onChange={(e) => handleFormChange('maxDiscount', e.target.value)}
+                        placeholder="No cap"
+                        className="w-full h-12 rounded-xl border border-border-light px-4 text-sm font-bold focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-5">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">
+                        Valid From *
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.validFrom}
+                        onChange={(e) => handleFormChange('validFrom', e.target.value)}
+                        className="w-full h-12 rounded-xl border border-border-light px-4 text-sm font-bold focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">
+                        Valid To *
+                      </label>
+                      <input
+                        type="date"
+                        value={formData.validTo}
+                        onChange={(e) => handleFormChange('validTo', e.target.value)}
+                        className="w-full h-12 rounded-xl border border-border-light px-4 text-sm font-bold focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-5 items-end">
+                    <div>
+                      <label className="block text-[10px] font-black uppercase tracking-widest text-text-secondary mb-2">
+                        Usage Limit *
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={formData.usageLimit}
+                        onChange={(e) => handleFormChange('usageLimit', e.target.value)}
+                        placeholder="100"
+                        className="w-full h-12 rounded-xl border border-border-light px-4 text-sm font-bold focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/5"
+                      />
+                    </div>
+                    <label className="flex items-center gap-3 h-12 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.active}
+                        onChange={(e) => handleFormChange('active', e.target.checked)}
+                        className="w-5 h-5 rounded-md border-border-light text-primary focus:ring-primary/20"
+                      />
+                      <span className="text-xs font-black uppercase tracking-widest text-text-secondary">
+                        Active immediately
+                      </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* Modal Footer */}
+                <div className="flex items-center justify-end gap-3 p-8 border-t border-border-light bg-background-secondary/20 rounded-b-[32px]">
+                  <button
+                    type="button"
+                    onClick={handleCloseModal}
+                    className="px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-text-secondary hover:bg-background-secondary transition-all"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={creating}
+                    className="flex items-center gap-2 px-8 py-3 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {creating && <Loader className="animate-spin" size={14} />}
+                    {creating ? 'Creating...' : 'Create Promo'}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

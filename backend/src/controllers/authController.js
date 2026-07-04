@@ -1,7 +1,9 @@
 const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 const { ErrorResponse } = require('../middleware/errorHandler');
 const { verifyIdToken } = require('../config/firebase');
+const sendEmail = require('../utils/sendEmail');
 
 // Generate JWT Token
 const generateToken = (id) => {
@@ -452,6 +454,113 @@ exports.updatePassword = async (req, res, next) => {
         });
     } catch (error) {
         console.error('Update password error:', error);
+        next(error);
+    }
+};
+
+// @desc    Request a password reset email
+// @route   POST /api/auth/forgot-password
+// @access  Public
+exports.forgotPassword = async (req, res, next) => {
+    try {
+        const { email } = req.body;
+
+        if (!email) {
+            return next(new ErrorResponse('Please provide an email address', 400));
+        }
+
+        const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
+
+        // Always respond the same way whether or not the user exists,
+        // so this endpoint can't be used to discover which emails are registered.
+        const genericResponse = {
+            success: true,
+            message: 'If an account exists for that email, a password reset link has been sent.'
+        };
+
+        if (!user) {
+            return res.json(genericResponse);
+        }
+
+        // Firebase-only accounts have no real password to reset this way
+        if (user.password.startsWith('firebase_')) {
+            return res.json(genericResponse);
+        }
+
+        const resetToken = user.getResetPasswordToken();
+        await user.save({ validateBeforeSave: false });
+
+        const resetUrl = `${process.env.CLIENT_URL}/reset-password/${resetToken}`;
+
+        const html = `
+            <p>Hi ${user.name},</p>
+            <p>You requested a password reset for your RentRide account.</p>
+            <p><a href="${resetUrl}" target="_blank">Click here to reset your password</a></p>
+            <p>This link expires in 30 minutes. If you didn't request this, you can safely ignore this email.</p>
+            <p>— RentRide</p>
+        `;
+
+        try {
+            await sendEmail({
+                email: user.email,
+                subject: 'RentRide - Password Reset Request',
+                html
+            });
+        } catch (emailError) {
+            // Roll back the token if the email genuinely failed to send,
+            // so the user isn't left with a dangling unusable token.
+            console.error('Reset email failed to send:', emailError);
+            user.resetPasswordToken = undefined;
+            user.resetPasswordExpire = undefined;
+            await user.save({ validateBeforeSave: false });
+            return next(new ErrorResponse('Email could not be sent. Please try again later.', 500));
+        }
+
+        res.json(genericResponse);
+    } catch (error) {
+        console.error('Forgot password error:', error);
+        next(error);
+    }
+};
+
+// @desc    Reset password using the token from the email link
+// @route   PUT /api/auth/reset-password/:resetToken
+// @access  Public
+exports.resetPassword = async (req, res, next) => {
+    try {
+        const { password } = req.body;
+
+        if (!password || password.length < 6) {
+            return next(new ErrorResponse('Password must be at least 6 characters', 400));
+        }
+
+        // Hash the incoming token the same way it was hashed when stored,
+        // so we can match it against the DB without ever storing the raw token.
+        const hashedToken = crypto
+            .createHash('sha256')
+            .update(req.params.resetToken)
+            .digest('hex');
+
+        const user = await User.findOne({
+            resetPasswordToken: hashedToken,
+            resetPasswordExpire: { $gt: Date.now() }
+        }).select('+password +resetPasswordToken +resetPasswordExpire');
+
+        if (!user) {
+            return next(new ErrorResponse('This reset link is invalid or has expired', 400));
+        }
+
+        user.password = password; // pre-save hook hashes this
+        user.resetPasswordToken = undefined;
+        user.resetPasswordExpire = undefined;
+        await user.save();
+
+        res.json({
+            success: true,
+            message: 'Password reset successful. You can now log in with your new password.'
+        });
+    } catch (error) {
+        console.error('Reset password error:', error);
         next(error);
     }
 };

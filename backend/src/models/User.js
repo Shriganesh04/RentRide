@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 const UserSchema = new mongoose.Schema({
     name: {
@@ -21,6 +22,14 @@ const UserSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Please provide a password'],
         minlength: 6,
+        select: false
+    },
+    resetPasswordToken: {
+        type: String,
+        select: false
+    },
+    resetPasswordExpire: {
+        type: Date,
         select: false
     },
     firebaseUid: {
@@ -112,6 +121,23 @@ UserSchema.methods.matchPassword = async function (enteredPassword) {
     }
 
     return await bcrypt.compare(enteredPassword, this.password);
+};
+
+// Generate and hash a password reset token.
+// Returns the RAW (unhashed) token to email to the user — only the
+// SHA-256 hash is stored in the DB, so a database leak alone can't
+// be used to reset anyone's password.
+UserSchema.methods.getResetPasswordToken = function () {
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    this.resetPasswordToken = crypto
+        .createHash('sha256')
+        .update(resetToken)
+        .digest('hex');
+
+    this.resetPasswordExpire = Date.now() + 30 * 60 * 1000; // 30 minutes
+
+    return resetToken;
 };
 
 module.exports = mongoose.model('User', UserSchema);

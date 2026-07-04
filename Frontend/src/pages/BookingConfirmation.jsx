@@ -83,6 +83,14 @@ const BookingConfirmation = () => {
     return null;
   }
 
+  // Block if car became unavailable between browsing and confirming
+  if (car.available === false) {
+    navigate('/browsecars', {
+      state: { unavailableMessage: `${car.name || car.brand} is no longer available for booking.` }
+    });
+    return null;
+  }
+
   const hourlyAvailable = car.pricePerHour > 0;
 
   // ── Rental mode ───────────────────────────────────────────────

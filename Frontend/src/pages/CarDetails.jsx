@@ -415,9 +415,14 @@ const CarDetails = () => {
                     </p>
                   )}
                 </div>
-                <button onClick={handleBookNow}
-                  className="flex-shrink-0 bg-green-500 hover:bg-green-400 text-gray-900 px-7 py-3.5 rounded-xl font-black text-base transition-all hover:scale-105 active:scale-95 flex items-center gap-2">
-                  Book Now <Calendar size={18} />
+                <button
+                  onClick={car.available ? handleBookNow : undefined}
+                  disabled={!car.available}
+                  className={`flex-shrink-0 px-7 py-3.5 rounded-xl font-black text-base transition-all flex items-center gap-2
+                    ${car.available
+                      ? 'bg-green-500 hover:bg-green-400 text-gray-900 hover:scale-105 active:scale-95'
+                      : 'bg-gray-300 text-gray-500 cursor-not-allowed opacity-60'}`}>
+                  {car.available ? <><Calendar size={18} /> Book Now</> : 'Not Available'}
                 </button>
               </div>
             </div>

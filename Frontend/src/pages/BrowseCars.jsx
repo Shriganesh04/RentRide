@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { toast } from 'react-hot-toast';
 import { useTheme } from '../context/ThemeContext';
 import {
   Search, Loader2, Users, Fuel, Gauge, AlertCircle,
@@ -65,7 +66,15 @@ const PRICE_RANGES = [
 // ── Main component ─────────────────────────────────────────────────────────────
 const BrowseCars = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { isDarkMode } = useTheme();
+
+  useEffect(() => {
+    if (location.state?.unavailableMessage) {
+      toast.error(location.state.unavailableMessage, { duration: 5000 });
+      window.history.replaceState({}, document.title);
+    }
+  }, []);
 
   const [allCars, setAllCars]   = useState([]);
   const [loading, setLoading]   = useState(true);
