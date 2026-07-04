@@ -78,6 +78,8 @@ const ContentArea = () => {
   const [totalCount, setTotalCount] = useState(0)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [editingPromoId, setEditingPromoId] = useState(null)
+  const [deletingId, setDeletingId] = useState(null)
   const [formError, setFormError] = useState('')
   const [formData, setFormData] = useState({
     code: '',
@@ -172,7 +174,50 @@ const ContentArea = () => {
 
   const handleCloseModal = () => {
     setShowCreateModal(false)
+    setEditingPromoId(null)
     resetForm()
+  }
+
+  const toDateInputValue = (isoString) => {
+    if (!isoString) return ''
+    return new Date(isoString).toISOString().slice(0, 10)
+  }
+
+  const openEditModal = (promo) => {
+    setEditingPromoId(promo._id)
+    setFormData({
+      code: promo.code || '',
+      name: promo.name || '',
+      description: promo.description || '',
+      type: promo.type || 'percentage',
+      value: promo.value ?? '',
+      minBookingAmount: promo.minBookingAmount ?? '',
+      maxDiscount: promo.maxDiscount ?? '',
+      validFrom: toDateInputValue(promo.validFrom),
+      validTo: toDateInputValue(promo.validTo),
+      usageLimit: promo.usageLimit ?? '',
+      active: promo.active ?? true
+    })
+    setFormError('')
+    setShowCreateModal(true)
+  }
+
+  const handleDeletePromotion = async (promo) => {
+    if (!confirm(`Delete promo "${promo.code}"? This cannot be undone.`)) return
+    try {
+      setDeletingId(promo._id)
+      const response = await axios.delete(`${API_URL}/admin/promotions/${promo._id}`, {
+        headers: getAuthHeader()
+      })
+      if (response.data.success) {
+        fetchPromotions()
+      }
+    } catch (error) {
+      console.error('Error deleting promotion:', error)
+      alert(error.response?.data?.message || 'Failed to delete promotion.')
+    } finally {
+      setDeletingId(null)
+    }
   }
 
   const handleCreatePromotion = async (e) => {
@@ -207,18 +252,22 @@ const ContentArea = () => {
         active: formData.active
       }
 
-      const response = await axios.post(`${API_URL}/admin/promotions`, payload, {
-        headers: getAuthHeader()
-      })
+      const response = editingPromoId
+        ? await axios.put(`${API_URL}/admin/promotions/${editingPromoId}`, payload, {
+            headers: getAuthHeader()
+          })
+        : await axios.post(`${API_URL}/admin/promotions`, payload, {
+            headers: getAuthHeader()
+          })
 
       if (response.data.success) {
         handleCloseModal()
-        setPage(1)
+        if (!editingPromoId) setPage(1)
         fetchPromotions()
       }
     } catch (error) {
-      console.error('Error creating promotion:', error)
-      setFormError(error.response?.data?.message || 'Failed to create promotion. Please try again.')
+      console.error('Error saving promotion:', error)
+      setFormError(error.response?.data?.message || `Failed to ${editingPromoId ? 'update' : 'create'} promotion. Please try again.`)
     } finally {
       setCreating(false)
     }
@@ -493,11 +542,16 @@ const ContentArea = () => {
                         </td>
                         <td className="px-8 py-6">
                           <div className="flex items-center justify-center gap-2">
-                            <button className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-primary/10 hover:text-primary transition-all border border-border-light">
+                            <button
+                              onClick={() => openEditModal(promo)}
+                              className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-primary/10 hover:text-primary transition-all border border-border-light">
                               <Edit2 size={16} />
                             </button>
-                            <button className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-red-50 hover:text-red-500 transition-all border border-border-light">
-                              <Trash2 size={16} />
+                            <button
+                              onClick={() => handleDeletePromotion(promo)}
+                              disabled={deletingId === promo._id}
+                              className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-red-50 hover:text-red-500 transition-all border border-border-light disabled:opacity-50">
+                              {deletingId === promo._id ? <Loader className="animate-spin" size={16} /> : <Trash2 size={16} />}
                             </button>
                           </div>
                         </td>
@@ -575,10 +629,10 @@ const ContentArea = () => {
                 <div className="flex items-center justify-between p-8 border-b border-border-light">
                   <div>
                     <h3 className="text-2xl font-black text-text-primary tracking-tight uppercase">
-                      Create <span className="text-primary italic">Promo</span>
+                      {editingPromoId ? <>Edit <span className="text-primary italic">Promo</span></> : <>Create <span className="text-primary italic">Promo</span></>}
                     </h3>
                     <p className="text-text-secondary text-sm font-medium mt-1">
-                      Set up a new discount code for customers.
+                      {editingPromoId ? 'Update the details of this discount code.' : 'Set up a new discount code for customers.'}
                     </p>
                   </div>
                   <button
@@ -764,7 +818,7 @@ const ContentArea = () => {
                     className="flex items-center gap-2 px-8 py-3 rounded-xl bg-primary text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-primary/20 hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {creating && <Loader className="animate-spin" size={14} />}
-                    {creating ? 'Creating...' : 'Create Promo'}
+                    {creating ? 'Saving...' : editingPromoId ? 'Save Changes' : 'Create Promo'}
                   </button>
                 </div>
               </form>

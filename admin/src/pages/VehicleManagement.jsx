@@ -230,6 +230,7 @@ const VehicleManagement = () => {
   const [filterCategory, setFilterCategory] = useState('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingCarId, setEditingCarId] = useState(null);
   const [activeTab, setActiveTab]     = useState('basics');
   const [formData, setFormData]       = useState(EMPTY_FORM);
   const [formError, setFormError]     = useState('');
@@ -267,13 +268,18 @@ const VehicleManagement = () => {
     }
     setIsSubmitting(true);
     try {
-      await axios.post(`${API_URL}/cars`, formData, { headers: getAuthHeader() });
+      if (editingCarId) {
+        await axios.put(`${API_URL}/cars/${editingCarId}`, formData, { headers: getAuthHeader() });
+      } else {
+        await axios.post(`${API_URL}/cars`, formData, { headers: getAuthHeader() });
+      }
       setIsModalOpen(false);
       setFormData(EMPTY_FORM);
+      setEditingCarId(null);
       setActiveTab('basics');
       fetchData();
     } catch (err) {
-      setFormError(err.response?.data?.message || 'Failed to add vehicle. Check all required fields.');
+      setFormError(err.response?.data?.message || `Failed to ${editingCarId ? 'update' : 'add'} vehicle. Check all required fields.`);
     } finally {
       setIsSubmitting(false);
     }
@@ -289,7 +295,25 @@ const VehicleManagement = () => {
     }
   };
 
-  const openModal = () => { setFormData(EMPTY_FORM); setActiveTab('basics'); setFormError(''); setIsModalOpen(true); };
+  const openModal = () => { setEditingCarId(null); setFormData(EMPTY_FORM); setActiveTab('basics'); setFormError(''); setIsModalOpen(true); };
+
+  const openEditModal = (car) => {
+    setEditingCarId(car._id);
+    setFormData({
+      ...EMPTY_FORM,
+      ...car,
+      // Strip fields the form doesn't own so we don't accidentally overwrite them
+      features: car.features || [],
+      safetyFeatures: car.safetyFeatures || [],
+      comfortFeatures: car.comfortFeatures || [],
+      entertainmentFeatures: car.entertainmentFeatures || [],
+      highlights: car.highlights || [],
+      images: car.images || [],
+    });
+    setActiveTab('basics');
+    setFormError('');
+    setIsModalOpen(true);
+  };
 
   const filteredVehicles = vehicles.filter(car => {
     const q = searchTerm.toLowerCase();
@@ -447,10 +471,16 @@ const VehicleManagement = () => {
                         <p className="text-[10px] font-bold text-orange-500 mt-0.5">₹{car.depositAmount?.toLocaleString()} deposit</p>
                       )}
                     </div>
-                    <button onClick={() => handleDelete(car._id)}
-                      className="w-9 h-9 flex items-center justify-center rounded-full bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all">
-                      <Trash2 size={14} />
-                    </button>
+                    <div className="flex gap-2">
+                      <button onClick={() => openEditModal(car)}
+                        className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 text-blue-400 hover:bg-blue-500 hover:text-white transition-all">
+                        <Edit2 size={14} />
+                      </button>
+                      <button onClick={() => handleDelete(car._id)}
+                        className="w-9 h-9 flex items-center justify-center rounded-full bg-red-50 text-red-400 hover:bg-red-500 hover:text-white transition-all">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               )) : (
@@ -475,10 +505,10 @@ const VehicleManagement = () => {
               {/* Modal header */}
               <div className="flex justify-between items-center px-8 pt-7 pb-5 border-b border-gray-100">
                 <div>
-                  <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">Add Vehicle</h2>
-                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">Expand your fleet</p>
+                  <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">{editingCarId ? 'Edit Vehicle' : 'Add Vehicle'}</h2>
+                  <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mt-0.5">{editingCarId ? 'Update fleet details' : 'Expand your fleet'}</p>
                 </div>
-                <button onClick={() => setIsModalOpen(false)}
+                <button onClick={() => { setIsModalOpen(false); setEditingCarId(null); }}
                   className="p-2 bg-gray-100 rounded-full hover:bg-gray-200 transition-colors text-gray-600">
                   <X size={20} />
                 </button>
@@ -636,7 +666,9 @@ const VehicleManagement = () => {
                   {isLastTab ? (
                     <button type="submit" disabled={isSubmitting}
                       className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-black uppercase tracking-wider transition-all disabled:opacity-50 shadow-lg shadow-blue-200">
-                      {isSubmitting ? <><RefreshCw size={15} className="animate-spin" /> Adding…</> : <><Plus size={15} /> Add Vehicle</>}
+                      {isSubmitting
+                        ? <><RefreshCw size={15} className="animate-spin" /> {editingCarId ? 'Saving…' : 'Adding…'}</>
+                        : <><Plus size={15} /> {editingCarId ? 'Save Changes' : 'Add Vehicle'}</>}
                     </button>
                   ) : (
                     <button type="button" onClick={() => setActiveTab(TABS[tabIndex + 1]?.id)}

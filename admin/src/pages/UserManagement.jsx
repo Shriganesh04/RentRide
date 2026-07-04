@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Sidebar from '../components/Sidebar'
 import {
   UserPlus,
   Search,
   Filter,
   ShieldAlert,
+  ShieldCheck,
   Trash2,
   ChevronLeft,
   ChevronRight,
@@ -15,7 +16,9 @@ import {
   Phone,
   ExternalLink,
   TrendingUp,
-  Loader
+  Loader,
+  X,
+  Calendar
 } from 'lucide-react'
 import axios from 'axios'
 
@@ -84,6 +87,8 @@ const ContentArea = () => {
     newThisWeek: 0,
     pendingUsers: 0
   })
+  const [viewingUser, setViewingUser] = useState(null)
+  const [actionLoadingId, setActionLoadingId] = useState(null)
 
   // Fetch users from backend
   useEffect(() => {
@@ -137,6 +142,49 @@ const ContentArea = () => {
       alert('Failed to fetch users. Please check your connection.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleToggleBan = async (user) => {
+    const nextStatus = user.status === 'banned' ? 'active' : 'banned'
+    const verb = nextStatus === 'banned' ? 'suspend' : 'reactivate'
+    if (!confirm(`Are you sure you want to ${verb} ${user.name || 'this user'}?`)) return
+
+    try {
+      setActionLoadingId(user._id)
+      const response = await axios.patch(
+        `${API_URL}/admin/users/${user._id}/status`,
+        { status: nextStatus },
+        { headers: getAuthHeader() }
+      )
+      if (response.data.success) {
+        setUsers(prev => prev.map(u => (u._id === user._id ? { ...u, status: nextStatus } : u)))
+      }
+    } catch (error) {
+      console.error('Error updating user status:', error)
+      alert(error.response?.data?.message || 'Failed to update user status.')
+    } finally {
+      setActionLoadingId(null)
+    }
+  }
+
+  const handleDeleteUser = async (user) => {
+    if (!confirm(`Delete ${user.name || 'this user'}? This will also delete their bookings and cannot be undone.`)) return
+
+    try {
+      setActionLoadingId(user._id)
+      const response = await axios.delete(`${API_URL}/admin/users/${user._id}`, {
+        headers: getAuthHeader()
+      })
+      if (response.data.success) {
+        setUsers(prev => prev.filter(u => u._id !== user._id))
+        setTotalCount(prev => Math.max(0, prev - 1))
+      }
+    } catch (error) {
+      console.error('Error deleting user:', error)
+      alert(error.response?.data?.message || 'Failed to delete user.')
+    } finally {
+      setActionLoadingId(null)
     }
   }
 
@@ -363,13 +411,28 @@ const ContentArea = () => {
                       </td>
                       <td className="px-8 py-6">
                         <div className="flex items-center justify-center gap-2">
-                          <button className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-primary/10 hover:text-primary transition-all border border-border-light">
+                          <button
+                            onClick={() => setViewingUser(user)}
+                            className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-primary/10 hover:text-primary transition-all border border-border-light">
                             <ExternalLink size={16} />
                           </button>
-                          <button className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-orange-50 hover:text-orange-500 transition-all border border-border-light">
-                            <ShieldAlert size={16} />
+                          <button
+                            onClick={() => handleToggleBan(user)}
+                            disabled={actionLoadingId === user._id}
+                            title={user.status === 'banned' ? 'Reactivate user' : 'Suspend user'}
+                            className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-orange-50 hover:text-orange-500 transition-all border border-border-light disabled:opacity-50">
+                            {actionLoadingId === user._id ? (
+                              <Loader className="animate-spin" size={16} />
+                            ) : user.status === 'banned' ? (
+                              <ShieldCheck size={16} />
+                            ) : (
+                              <ShieldAlert size={16} />
+                            )}
                           </button>
-                          <button className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-red-50 hover:text-red-500 transition-all border border-border-light">
+                          <button
+                            onClick={() => handleDeleteUser(user)}
+                            disabled={actionLoadingId === user._id}
+                            className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-red-50 hover:text-red-500 transition-all border border-border-light disabled:opacity-50">
                             <Trash2 size={16} />
                           </button>
                         </div>
@@ -424,6 +487,103 @@ const ContentArea = () => {
           </div>
         </motion.div>
       </div>
+
+      {/* User Detail Modal */}
+      <AnimatePresence>
+        {viewingUser && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+            onClick={() => setViewingUser(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="w-full max-w-md rounded-[32px] bg-white shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between p-8 border-b border-border-light">
+                <h3 className="text-xl font-black text-text-primary uppercase tracking-tight">
+                  User <span className="text-primary italic">Details</span>
+                </h3>
+                <button
+                  onClick={() => setViewingUser(null)}
+                  className="w-10 h-10 rounded-xl bg-background-secondary flex items-center justify-center text-text-secondary hover:bg-red-50 hover:text-red-500 transition-all"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-8 space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-16 w-16 overflow-hidden rounded-2xl border-2 border-border-light shadow-sm bg-primary/10 flex items-center justify-center">
+                    <span className="text-2xl font-black text-primary">
+                      {viewingUser.name?.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="font-black text-text-primary uppercase tracking-tight">{viewingUser.name || 'N/A'}</p>
+                    <span className={`inline-block mt-1 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest border ${getRoleBadge(viewingUser.role)}`}>
+                      {viewingUser.role || 'user'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-sm font-bold text-text-primary">
+                    <Mail size={14} className="text-primary flex-shrink-0" /> {viewingUser.email}
+                  </div>
+                  <div className="flex items-center gap-3 text-sm font-bold text-text-primary">
+                    <Phone size={14} className="text-primary flex-shrink-0" /> {viewingUser.phone || 'N/A'}
+                  </div>
+                  <div className="flex items-center gap-3 text-sm font-bold text-text-primary">
+                    <Calendar size={14} className="text-primary flex-shrink-0" />
+                    Joined {new Date(viewingUser.createdAt).toLocaleDateString()}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 pt-4 border-t border-border-light">
+                  <div className="rounded-2xl bg-background-secondary/40 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 mb-1">Status</p>
+                    <div className="flex items-center gap-2">
+                      <span className={`h-2.5 w-2.5 rounded-full ${getStatusColor(viewingUser.status)}`} />
+                      <span className="text-sm font-black uppercase text-text-primary">{viewingUser.status || 'active'}</span>
+                    </div>
+                  </div>
+                  <div className="rounded-2xl bg-background-secondary/40 p-4">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-text-secondary opacity-60 mb-1">Trips</p>
+                    <p className="text-lg font-black text-text-primary">{viewingUser.bookings || 0}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 p-8 border-t border-border-light bg-background-secondary/20">
+                <button
+                  onClick={() => {
+                    handleToggleBan(viewingUser)
+                    setViewingUser(null)
+                  }}
+                  className="px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-orange-600 bg-orange-50 hover:bg-orange-100 transition-all"
+                >
+                  {viewingUser.status === 'banned' ? 'Reactivate' : 'Suspend'}
+                </button>
+                <button
+                  onClick={() => {
+                    handleDeleteUser(viewingUser)
+                    setViewingUser(null)
+                  }}
+                  className="px-6 py-3 rounded-xl text-xs font-black uppercase tracking-widest text-red-600 bg-red-50 hover:bg-red-100 transition-all"
+                >
+                  Delete
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
