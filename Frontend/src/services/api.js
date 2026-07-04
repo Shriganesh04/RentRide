@@ -30,11 +30,27 @@ api.interceptors.request.use(
   }
 );
 
+// Endpoints where a 401 means "wrong credentials", not "your session died" —
+// these must NOT trigger the global logout/redirect, or the sign-in page
+// would get yanked away before it can show the actual error to the user.
+const AUTH_ENDPOINTS = [
+  '/auth/login',
+  '/auth/register',
+  '/auth/firebase-login',
+  '/auth/firebase-register',
+  '/auth/firebase-google',
+  '/auth/verify-firebase-token',
+];
+
 // Response interceptor - handle errors
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    const isAuthEndpoint = AUTH_ENDPOINTS.some((path) =>
+      error.config?.url?.includes(path)
+    );
+
+    if (error.response?.status === 401 && !isAuthEndpoint) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/signin';

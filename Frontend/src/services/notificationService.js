@@ -1,19 +1,8 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api';
-
-const getAxiosConfig = () => {
-    const token = localStorage.getItem('token');
-    return {
-        headers: {
-            Authorization: `Bearer ${token}`
-        }
-    };
-};
+import api from './api';
 
 const getUserNotifications = async () => {
     try {
-        const response = await axios.get(`${API_URL}/notifications`, getAxiosConfig());
+        const response = await api.get('/notifications');
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;
@@ -22,7 +11,7 @@ const getUserNotifications = async () => {
 
 const markAsRead = async (id) => {
     try {
-        const response = await axios.put(`${API_URL}/notifications/${id}/read`, {}, getAxiosConfig());
+        const response = await api.put(`/notifications/${id}/read`, {});
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;
@@ -31,7 +20,7 @@ const markAsRead = async (id) => {
 
 const markAllRead = async () => {
     try {
-        const response = await axios.put(`${API_URL}/notifications/read-all`, {}, getAxiosConfig());
+        const response = await api.put('/notifications/read-all', {});
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;
@@ -40,7 +29,7 @@ const markAllRead = async () => {
 
 const deleteNotification = async (id) => {
     try {
-        const response = await axios.delete(`${API_URL}/notifications/${id}`, getAxiosConfig());
+        const response = await api.delete(`/notifications/${id}`);
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;
@@ -49,7 +38,7 @@ const deleteNotification = async (id) => {
 
 const clearAllNotifications = async () => {
     try {
-        const response = await axios.delete(`${API_URL}/notifications/clear-all`, getAxiosConfig());
+        const response = await api.delete('/notifications/clear-all');
         return response.data;
     } catch (error) {
         throw error.response?.data || error.message;

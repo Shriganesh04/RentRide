@@ -11,7 +11,7 @@ import {
   Loader,
   ArrowLeft
 } from 'lucide-react';
-import axios from 'axios';
+import api from '../services/api';
 import DashboardNavbar from '../components/layout/DashboardNavbar';
 
 const ReportDamage = () => {
@@ -81,15 +81,13 @@ const ReportDamage = () => {
         formData.append('images', img.file);
       });
 
-      const response = await axios.post(
-        `${import.meta.env.VITE_API_URL}/damages`,
+      const response = await api.post(
+        '/damages',
         formData,
         {
           headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`,
             'Content-Type': 'multipart/form-data'
-          },
-          withCredentials: true
+          }
         }
       );
 

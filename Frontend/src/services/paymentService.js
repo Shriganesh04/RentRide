@@ -1,28 +1,4 @@
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:5000/api';
-
-/**
- * Get authentication token from localStorage
- */
-const getAuthToken = () => {
-  const token = localStorage.getItem('token');
-  return token;
-};
-
-/**
- * Get axios config with auth headers
- */
-const getAxiosConfig = () => {
-  const token = getAuthToken();
-  return {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` })
-    },
-    withCredentials: true
-  };
-};
+import api from './api';
 
 /**
  * Create Razorpay Order
@@ -31,11 +7,7 @@ const getAxiosConfig = () => {
  */
 const createOrder = async (orderData) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/payments/process`,
-      orderData,
-      getAxiosConfig()
-    );
+    const response = await api.post('/payments/process', orderData);
     return response.data;
   } catch (error) {
     console.error('Error creating order:', error);
@@ -50,11 +22,7 @@ const createOrder = async (orderData) => {
  */
 const verifyPayment = async (paymentData) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/payments/verify`,
-      paymentData,
-      getAxiosConfig()
-    );
+    const response = await api.post('/payments/verify', paymentData);
     return response.data;
   } catch (error) {
     console.error('Error verifying payment:', error);
@@ -69,11 +37,7 @@ const verifyPayment = async (paymentData) => {
  */
 const createDamageOrder = async (damageReportId) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/payments/process-damage`,
-      { damageReportId },
-      getAxiosConfig()
-    );
+    const response = await api.post('/payments/process-damage', { damageReportId });
     return response.data;
   } catch (error) {
     console.error('Error creating damage order:', error);
@@ -88,11 +52,7 @@ const createDamageOrder = async (damageReportId) => {
  */
 const verifyDamagePayment = async (paymentData) => {
   try {
-    const response = await axios.post(
-      `${API_URL}/payments/verify-damage`,
-      paymentData,
-      getAxiosConfig()
-    );
+    const response = await api.post('/payments/verify-damage', paymentData);
     return response.data;
   } catch (error) {
     console.error('Error verifying damage payment:', error);
@@ -106,10 +66,7 @@ const verifyDamagePayment = async (paymentData) => {
  */
 const getPaymentHistory = async () => {
   try {
-    const response = await axios.get(
-      `${API_URL}/payments/history`,
-      getAxiosConfig()
-    );
+    const response = await api.get('/payments/history');
     return response.data;
   } catch (error) {
     console.error('Error fetching payment history:', error);
