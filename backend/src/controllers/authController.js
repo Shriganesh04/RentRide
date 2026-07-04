@@ -80,6 +80,11 @@ exports.login = async (req, res, next) => {
             return next(new ErrorResponse('This account uses Google/Firebase login. Please sign in with Google.', 401));
         }
 
+        // Block banned accounts
+        if (user.status === 'banned') {
+            return next(new ErrorResponse('This account has been suspended. Please contact support.', 403));
+        }
+
         // Check password
         const isPasswordMatch = await user.matchPassword(password);
 
@@ -214,6 +219,11 @@ exports.firebaseLogin = async (req, res, next) => {
             return next(new ErrorResponse('User not found. Please register first.', 404));
         }
 
+        // Block banned accounts
+        if (user.status === 'banned') {
+            return next(new ErrorResponse('This account has been suspended. Please contact support.', 403));
+        }
+
         // Update Firebase UID if not set
         if (!user.firebaseUid) {
             user.firebaseUid = decodedToken.uid;
@@ -295,6 +305,11 @@ exports.firebaseGoogleLogin = async (req, res, next) => {
                 profilePicture: picture || null
             });
         } else {
+            // Block banned accounts
+            if (user.status === 'banned') {
+                return next(new ErrorResponse('This account has been suspended. Please contact support.', 403));
+            }
+
             // Update existing user with Firebase UID if not set
             if (!user.firebaseUid) {
                 user.firebaseUid = uid;

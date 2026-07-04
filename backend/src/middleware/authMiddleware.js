@@ -25,6 +25,10 @@ exports.protect = async (req, res, next) => {
       return next(new ErrorResponse('User not found', 404));
     }
 
+    if (req.user.status === 'banned') {
+      return next(new ErrorResponse('This account has been suspended. Please contact support.', 403));
+    }
+
     next();
   } catch (err) {
     return next(new ErrorResponse('Not authorized to access this route', 401));

@@ -82,6 +82,15 @@ const UserSchema = new mongoose.Schema({
         default: 0,
         min: 0
     },
+    // Account status. 'banned' users are blocked from logging in and from
+    // using any existing session token (enforced in authController + protect
+    // middleware). 'pending' is reserved for future use (e.g. unverified
+    // accounts) and is not currently set anywhere automatically.
+    status: {
+        type: String,
+        enum: ['active', 'pending', 'banned'],
+        default: 'active'
+    },
     // True when the user has an unpaid fine and no deposit was available to
     // cover it. Blocks new bookings only — browsing, login, and viewing
     // existing bookings/history remain unaffected.

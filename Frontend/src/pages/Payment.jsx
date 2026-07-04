@@ -417,7 +417,7 @@ const Payment = () => {
 
     } catch (error) {
       console.error('Payment error:', error);
-      alert(error.message || 'Payment failed. Please try again.');
+      alert(error.response?.data?.message || error.message || 'Payment failed. Please try again.');
     } finally {
       setLoading(false);
     }

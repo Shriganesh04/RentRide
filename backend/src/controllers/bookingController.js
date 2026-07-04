@@ -65,9 +65,9 @@ exports.createBooking = async (req, res) => {
 
     const taxesFees = Math.round(baseFare * 0.12);
     const deposit   = car.depositAmount > 0 ? car.depositAmount : 500;
-    let totalPrice  = baseFare + taxesFees + deposit;
 
-    // Apply promotion if provided — discount applies to baseFare, not the final total
+    // Apply promotion if provided — discount applies to baseFare + taxes only.
+    // The deposit is refundable and must never be reduced by a coupon.
     let promotion = null;
     let discount = 0;
 
@@ -79,13 +79,14 @@ exports.createBooking = async (req, res) => {
       if (promotion && promotion.isValid() && promotion.isApplicableToVehicle(carId)) {
         if (baseFare >= promotion.minBookingAmount) {
           discount = promotion.calculateDiscount(baseFare);
-          totalPrice = Math.max(0, totalPrice - discount);
 
           promotion.usedCount += 1;
           await promotion.save();
         }
       }
     }
+
+    const totalPrice = Math.max(0, baseFare + taxesFees - discount) + deposit;
 
     // Create booking
     const booking = await Booking.create({
@@ -267,6 +268,13 @@ exports.cancelBooking = async (req, res) => {
 
     // Free up the car so it can be booked again
     await Car.findByIdAndUpdate(booking.car, { available: true });
+
+    // Give back the promo usage slot this booking consumed, if any
+    if (booking.promotion) {
+      await Promotion.findByIdAndUpdate(booking.promotion, {
+        $inc: { usedCount: -1 }
+      });
+    }
     
     res.json({
       success: true,
