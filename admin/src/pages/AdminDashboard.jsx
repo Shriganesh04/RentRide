@@ -13,47 +13,60 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState([])
   const [recentActivity, setRecentActivity] = useState([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
   const [lastRefresh, setLastRefresh] = useState(new Date())
   const [notifications, setNotifications] = useState(0)
+
+  const formatGrowth = (value) => {
+    if (value === undefined || value === null) return '—'
+    return `${value > 0 ? '+' : ''}${value}%`
+  }
+
+  const growthTrend = (value) => {
+    if (!value) return 'neutral'
+    return value > 0 ? 'up' : 'down'
+  }
 
   const fetchData = async () => {
     try {
       setLoading(true)
+      setError('')
       const statsRes = await statsService.getDashboardStats()
+      const d = statsRes.data
       setStats([
         {
           title: 'Total Revenue',
-          value: `₹${(statsRes.data.totalRevenue || 0).toLocaleString()}`,
-          sub: 'vs last month',
-          change: statsRes.data.revenueChange || '+12.4%',
-          trend: 'up',
+          value: `₹${(d.totalRevenue || 0).toLocaleString()}`,
+          sub: 'selected period',
+          change: formatGrowth(d.revenueGrowth),
+          trend: growthTrend(d.revenueGrowth),
           icon: Coins,
           accent: '#22c55e',
         },
         {
           title: 'Active Bookings',
-          value: statsRes.data.activeBookings || 0,
+          value: d.activeBookings || 0,
           sub: 'currently active',
-          change: statsRes.data.bookingsChange || '+5.2%',
-          trend: 'up',
+          change: formatGrowth(d.bookingsGrowth),
+          trend: growthTrend(d.bookingsGrowth),
           icon: Calendar,
           accent: '#3b82f6',
         },
         {
           title: 'Fleet Utilization',
-          value: `${statsRes.data.fleetUtilization || 0}%`,
-          sub: 'of total fleet',
-          change: statsRes.data.utilizationChange || '—',
+          value: `${d.fleetUtilization || 0}%`,
+          sub: 'of total fleet currently rented',
+          change: '—',
           trend: 'neutral',
           icon: CarFront,
           accent: '#f59e0b',
         },
         {
           title: 'Pending Claims',
-          value: statsRes.data.pendingRequests || 0,
+          value: d.pendingRequests || 0,
           sub: 'damage reports',
-          change: 'Review needed',
-          trend: 'down',
+          change: (d.pendingRequests || 0) > 0 ? 'Review needed' : 'All clear',
+          trend: (d.pendingRequests || 0) > 0 ? 'down' : 'neutral',
           icon: AlertTriangle,
           accent: '#ef4444',
         },
@@ -62,13 +75,17 @@ const AdminDashboard = () => {
       const activityRes = await statsService.getRecentActivity(5)
       setRecentActivity(activityRes.data.bookings || [])
       setLastRefresh(new Date())
-    } catch {
-      // Fallback data
+    } catch (err) {
+      console.error('Failed to load dashboard stats:', err)
+      // Honest failure state — no fabricated numbers. A dashboard that
+      // silently shows fake KPIs on error is more dangerous than one that
+      // says it couldn't load.
+      setError('Unable to load live dashboard stats. Showing may be stale — try refreshing.')
       setStats([
-        { title: 'Total Revenue',    value: '₹1,28,450', sub: 'vs last month',     change: '+12.4%', trend: 'up',      icon: Coins,         accent: '#22c55e' },
-        { title: 'Active Bookings',  value: 45,           sub: 'currently active',  change: '+5.2%',  trend: 'up',      icon: Calendar,      accent: '#3b82f6' },
-        { title: 'Fleet Utilization',value: '78%',        sub: 'of total fleet',    change: '—',      trend: 'neutral', icon: CarFront,      accent: '#f59e0b' },
-        { title: 'Pending Claims',   value: 8,            sub: 'damage reports',    change: 'Urgent', trend: 'down',    icon: AlertTriangle, accent: '#ef4444' },
+        { title: 'Total Revenue',    value: '—', sub: 'selected period',    change: '—', trend: 'neutral', icon: Coins,         accent: '#22c55e' },
+        { title: 'Active Bookings',  value: '—', sub: 'currently active',   change: '—', trend: 'neutral', icon: Calendar,      accent: '#3b82f6' },
+        { title: 'Fleet Utilization',value: '—', sub: 'of total fleet',     change: '—', trend: 'neutral', icon: CarFront,      accent: '#f59e0b' },
+        { title: 'Pending Claims',   value: '—', sub: 'damage reports',     change: '—', trend: 'neutral', icon: AlertTriangle, accent: '#ef4444' },
       ])
     } finally {
       setLoading(false)
@@ -135,6 +152,13 @@ const AdminDashboard = () => {
             </div>
           </div>
         </div>
+
+        {error && (
+          <div className="flex items-center gap-3 bg-red-50 border border-red-200 text-red-700 text-sm font-semibold rounded-2xl px-5 py-3">
+            <AlertTriangle size={16} className="flex-shrink-0" />
+            {error}
+          </div>
+        )}
 
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

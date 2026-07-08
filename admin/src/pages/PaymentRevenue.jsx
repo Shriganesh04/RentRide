@@ -121,6 +121,7 @@ const ContentArea = () => {
     } catch (error) {
       console.error('Error fetching payments:', error)
       alert('Failed to fetch payments. Please check your connection.')
+    } finally {
       setLoading(false)
     }
   }

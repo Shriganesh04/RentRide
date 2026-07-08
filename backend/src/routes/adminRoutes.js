@@ -6,6 +6,7 @@ const User = require('../models/User');
 const Booking = require('../models/Booking');
 const Promotion = require('../models/Promotion');
 const Car = require('../models/Car');
+const DamageReport = require('../models/DamageReport');
 
 // ========================================
 // USER MANAGEMENT ROUTES
@@ -374,51 +375,120 @@ router.patch('/promotions/:id/toggle', protect, authorize('admin', 'manager'), a
 // ========================================
 
 // Get dashboard statistics (Admin only)
+// Given a period string, returns the start of that period and the start of
+// the equivalent prior period (used for computing week/month/year-over-period
+// growth percentages consistently across all analytics endpoints).
+function getPeriodRanges(period) {
+  const now = new Date();
+  const currentStart = new Date(now);
+  const previousStart = new Date(now);
+
+  switch (period) {
+    case 'week':
+      currentStart.setDate(now.getDate() - 7);
+      previousStart.setDate(now.getDate() - 14);
+      break;
+    case 'year':
+      currentStart.setFullYear(now.getFullYear() - 1);
+      previousStart.setFullYear(now.getFullYear() - 2);
+      break;
+    case 'month':
+    default:
+      currentStart.setMonth(now.getMonth() - 1);
+      previousStart.setMonth(now.getMonth() - 2);
+      break;
+  }
+
+  return { currentStart, previousStart, now };
+}
+
+const percentGrowth = (current, previous) => {
+  if (!previous) return current > 0 ? 100 : 0;
+  return Math.round(((current - previous) / previous) * 100);
+};
+
 router.get('/stats/dashboard', protect, authorize('admin', 'manager'), async (req, res) => {
   try {
+    const { period = 'month' } = req.query;
+    const { currentStart, previousStart, now } = getPeriodRanges(period);
+
+    // Live snapshot figures — these describe "right now", not a date range,
+    // so they intentionally aren't scoped to the period filter.
     const totalUsers = await User.countDocuments();
     const activeUsers = await User.countDocuments({ status: 'active' });
-    const totalBookings = await Booking.countDocuments();
-    const activeBookings = await Booking.countDocuments({ status: 'confirmed' });
-    const pendingBookings = await Booking.countDocuments({ status: 'pending' });
     const totalCars = await Car.countDocuments();
     const availableCars = await Car.countDocuments({ available: true });
     const totalPromotions = await Promotion.countDocuments({ active: true });
+    // Claims still awaiting an admin decision — surfaced on the main
+    // dashboard as "Pending Claims" so they don't get missed.
+    const pendingRequests = await DamageReport.countDocuments({
+      status: { $in: ['pending', 'under_review'] }
+    });
+    const fleetUtilization = totalCars > 0
+      ? Math.round(((totalCars - availableCars) / totalCars) * 100)
+      : 0;
 
-    // Calculate revenue
-    const revenue = await Booking.aggregate([
-      { $match: { status: 'confirmed' } },
-      { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+    // Revenue counts both 'confirmed' (currently active) and 'completed'
+    // (already returned) bookings — a finished rental's revenue shouldn't
+    // disappear from the totals just because the car came back.
+    const REVENUE_STATUSES = ['confirmed', 'completed'];
+
+    const [periodRevenueAgg, periodBookings, prevRevenueAgg, prevBookings, periodNewUsers, prevNewUsers, periodNewCars, prevNewCars] = await Promise.all([
+      Booking.aggregate([
+        { $match: { status: { $in: REVENUE_STATUSES }, createdAt: { $gte: currentStart } } },
+        { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+      ]),
+      Booking.countDocuments({ status: { $in: REVENUE_STATUSES }, createdAt: { $gte: currentStart } }),
+      Booking.aggregate([
+        { $match: { status: { $in: REVENUE_STATUSES }, createdAt: { $gte: previousStart, $lt: currentStart } } },
+        { $group: { _id: null, total: { $sum: '$totalPrice' } } }
+      ]),
+      Booking.countDocuments({ status: { $in: REVENUE_STATUSES }, createdAt: { $gte: previousStart, $lt: currentStart } }),
+      User.countDocuments({ createdAt: { $gte: currentStart } }),
+      User.countDocuments({ createdAt: { $gte: previousStart, $lt: currentStart } }),
+      Car.countDocuments({ createdAt: { $gte: currentStart } }),
+      Car.countDocuments({ createdAt: { $gte: previousStart, $lt: currentStart } })
     ]);
 
-    // Calculate this month's revenue
-    const startOfMonth = new Date();
+    const periodRevenue = periodRevenueAgg[0]?.total || 0;
+    const prevRevenue = prevRevenueAgg[0]?.total || 0;
+
+    // Kept for backward compatibility with any other consumer of this endpoint
+    // that expects an always-this-calendar-month figure.
+    const startOfMonth = new Date(now);
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
-
-    const monthlyRevenue = await Booking.aggregate([
-      {
-        $match: {
-          status: 'confirmed',
-          createdAt: { $gte: startOfMonth }
-        }
-      },
+    const monthlyRevenueAgg = await Booking.aggregate([
+      { $match: { status: { $in: REVENUE_STATUSES }, createdAt: { $gte: startOfMonth } } },
       { $group: { _id: null, total: { $sum: '$totalPrice' } } }
     ]);
 
     res.json({
       success: true,
       data: {
+        // Snapshot figures (not period-scoped)
         totalUsers,
         activeUsers,
-        totalBookings,
-        activeBookings,
-        pendingBookings,
         totalCars,
+        totalVehicles: totalCars,
         availableCars,
         totalPromotions,
-        totalRevenue: revenue[0]?.total || 0,
-        monthlyRevenue: monthlyRevenue[0]?.total || 0
+        pendingBookings: await Booking.countDocuments({ status: 'pending' }),
+        activeBookings: await Booking.countDocuments({ status: 'confirmed' }),
+        fleetUtilization,
+        pendingRequests,
+
+        // Period-scoped figures — these are what the Revenue/Bookings/Users/
+        // Fleet cards on the Analytics page actually display, and what the
+        // period selector (week/month/year) controls.
+        totalRevenue: periodRevenue,
+        totalBookings: periodBookings,
+        monthlyRevenue: monthlyRevenueAgg[0]?.total || 0,
+
+        revenueGrowth: percentGrowth(periodRevenue, prevRevenue),
+        bookingsGrowth: percentGrowth(periodBookings, prevBookings),
+        usersGrowth: percentGrowth(periodNewUsers, prevNewUsers),
+        vehiclesGrowth: percentGrowth(periodNewCars, prevNewCars)
       }
     });
   } catch (error) {
@@ -468,33 +538,23 @@ router.get('/stats/recent-activity', protect, authorize('admin', 'manager'), asy
 router.get('/stats/revenue-analytics', protect, authorize('admin', 'manager'), async (req, res) => {
   try {
     const { period = 'month' } = req.query;
+    const { currentStart } = getPeriodRanges(period);
 
+    // Group by year+month(+day) rather than day-of-month alone — otherwise a
+    // range spanning a month boundary (e.g. the last 30 days) merges e.g.
+    // June 5th and July 5th into a single "day 5" bucket.
     let groupBy;
-    let dateRange = new Date();
-
-    switch (period) {
-      case 'week':
-        dateRange.setDate(dateRange.getDate() - 7);
-        groupBy = { $dayOfMonth: '$createdAt' };
-        break;
-      case 'month':
-        dateRange.setMonth(dateRange.getMonth() - 1);
-        groupBy = { $dayOfMonth: '$createdAt' };
-        break;
-      case 'year':
-        dateRange.setFullYear(dateRange.getFullYear() - 1);
-        groupBy = { $month: '$createdAt' };
-        break;
-      default:
-        dateRange.setMonth(dateRange.getMonth() - 1);
-        groupBy = { $dayOfMonth: '$createdAt' };
+    if (period === 'year') {
+      groupBy = { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } };
+    } else {
+      groupBy = { year: { $year: '$createdAt' }, month: { $month: '$createdAt' }, day: { $dayOfMonth: '$createdAt' } };
     }
 
     const revenueData = await Booking.aggregate([
       {
         $match: {
-          status: 'confirmed',
-          createdAt: { $gte: dateRange }
+          status: { $in: ['confirmed', 'completed'] },
+          createdAt: { $gte: currentStart }
         }
       },
       {
@@ -504,7 +564,7 @@ router.get('/stats/revenue-analytics', protect, authorize('admin', 'manager'), a
           count: { $sum: 1 }
         }
       },
-      { $sort: { _id: 1 } }
+      { $sort: { '_id.year': 1, '_id.month': 1, '_id.day': 1 } }
     ]);
 
     res.json({
@@ -524,12 +584,16 @@ router.get('/stats/revenue-analytics', protect, authorize('admin', 'manager'), a
 // Get coupon analytics (Admin only)
 router.get('/stats/coupon-analytics', protect, authorize('admin', 'manager'), async (req, res) => {
   try {
+    const { period = 'month' } = req.query;
+    const { currentStart } = getPeriodRanges(period);
+
     const couponStats = await Booking.aggregate([
       {
         $match: {
           status: { $ne: 'cancelled' },
           discount: { $gt: 0 },
-          promotionCode: { $ne: null }
+          promotionCode: { $ne: null },
+          createdAt: { $gte: currentStart }
         }
       },
       {

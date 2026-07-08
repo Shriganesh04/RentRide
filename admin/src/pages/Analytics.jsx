@@ -72,12 +72,16 @@ const Analytics = () => {
       // 2. Fetch Revenue Chart Data
       const revenueRes = await axios.get(`${API_URL}/admin/stats/revenue-analytics?period=${timeRange}`, { headers })
       if (revenueRes.data.success) {
-        // Transform data for chart
-        // Map backend _id to label (Day/Month name)
+        // Transform data for chart — backend now groups by {year, month, day?}
+        // instead of a bare day-of-month number, so build an unambiguous label.
+        const MONTH_NAMES = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
         const transformedData = revenueRes.data.data.map(item => {
-          // If referencing day of week/month, we might want to format it
+          const { year, month, day } = item._id || {}
+          const label = day
+            ? `${day} ${MONTH_NAMES[(month || 1) - 1]}`
+            : `${MONTH_NAMES[(month || 1) - 1]} ${year || ''}`.trim()
           return {
-            label: item._id, // Ideally format this based on period
+            label,
             revenue: item.revenue,
             bookings: item.bookings || item.count
           }
@@ -251,8 +255,7 @@ const Analytics = () => {
                     <div key={index} className="space-y-3">
                       <div className="flex justify-between items-end">
                         <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">
-                          {/* Simple mapping for label, could be improved with date formatting */}
-                          {timeRange === 'week' ? `Day ${item.label}` : timeRange === 'year' ? `Month ${item.label}` : `Day ${item.label}`}
+                          {item.label}
                         </span>
                         <span className="text-base font-black text-gray-900">
                           ₹{item.revenue.toLocaleString()}
